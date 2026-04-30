@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run build:prod",
+    "build:prod": "tsc && vite build --mode production",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:frontend && npm run test:rust",
     "test:frontend": "vitest run --environment jsdom",

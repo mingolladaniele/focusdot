@@ -55,13 +55,14 @@ These rules apply to every subagent and inline executor working on this codebase
    npm run typecheck
    npm run test:frontend
    npm run test:rust
-   npm run build
+   npm run build:prod
    ```
+   `build:prod` runs `tsc && vite build --mode production` and emits the **production** frontend bundle under `dist/`. Do **not** substitute `npm run dev`, bare `vite`, or `npm run tauri dev` for this step — those are development-only and do not satisfy the gate.
 7. For tasks that touch Rust (`src-tauri/**`), additionally run:
    ```powershell
    npm run build:installer
    ```
-   The MSI must finish (`Finished 1 bundle at ...`). If `cargo` is missing, the wrapper script `scripts/run-tauri.ps1` must be used (it sets PATH); never edit machine-wide environment.
+   This invokes **release** `tauri build` (via `scripts/run-tauri.ps1`; no dev profile). The MSI must finish (`Finished 1 bundle at ...`). If `cargo` is missing, the wrapper script `scripts/run-tauri.ps1` must be used (it sets PATH); never edit machine-wide environment.
 8. If verification fails: do **not** commit. Fix forward in the same task or revert the working tree (`git restore .`).
 
 **Commit hygiene:**
