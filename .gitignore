@@ -43,3 +43,6 @@ Thumbs.db
 # ── Project worktrees (superpowers / local isolation) ──
 .worktrees/
 worktrees/
+
+# ── Local documentation & plans (not published) ──
+docs/
