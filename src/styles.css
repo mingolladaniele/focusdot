@@ -19,6 +19,11 @@
   --muted:     oklch(0.66 0.006 250);
   --dim:       oklch(0.50 0.006 250);
 
+  /* Match tray icon fills (src-tauri/src/tray.rs icon_for_phase) */
+  --tray-idle:  #ffffff;
+  --tray-focus: #2bb673;
+  --tray-break: #4a90e2;
+
   --focus:     oklch(0.74 0.14 var(--accent-h));
   --break:     oklch(0.78 0.10 200);
   --idle:      var(--dim);
@@ -72,16 +77,17 @@ main {
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  background: var(--idle);
+  background: var(--tray-idle);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--line) 40%, transparent);
   transition: background .25s, box-shadow .25s;
 }
 .brand-dot[data-phase="Focus"] {
-  background: var(--focus);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--focus) 25%, transparent);
+  background: var(--tray-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tray-focus) 28%, transparent);
 }
 .brand-dot[data-phase="Break"] {
-  background: var(--break);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--break) 25%, transparent);
+  background: var(--tray-break);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tray-break) 28%, transparent);
 }
 
 .status-pill {
@@ -101,24 +107,37 @@ main {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: var(--dim);
+  background: var(--tray-idle);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--line) 35%, transparent);
+  transition: background .2s, box-shadow .2s;
+}
+.status-pill[data-phase="Idle"] {
+  color: color-mix(in oklab, var(--tray-idle) 72%, var(--muted));
+  border-color: color-mix(in oklab, var(--tray-idle) 22%, var(--line-soft));
+}
+.status-pill[data-phase="Idle"] .status-pulse {
+  background: var(--tray-idle);
 }
 .status-pill[data-phase="Focus"] {
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-color: color-mix(in oklab, var(--accent) 35%, transparent);
+  color: color-mix(in oklab, var(--tray-focus) 85%, var(--text));
+  background: color-mix(in srgb, var(--tray-focus) 16%, oklch(0.20 0.005 250));
+  border-color: color-mix(in srgb, var(--tray-focus) 38%, var(--line-soft));
 }
 .status-pill[data-phase="Focus"] .status-pulse {
-  background: var(--accent);
+  background: var(--tray-focus);
+}
+.status-pill[data-phase="Focus"][data-running="true"] .status-pulse {
   animation: pulse 1.6s ease-in-out infinite;
 }
 .status-pill[data-phase="Break"] {
-  color: var(--break);
-  background: color-mix(in oklab, var(--break) 14%, transparent);
-  border-color: color-mix(in oklab, var(--break) 30%, transparent);
+  color: color-mix(in oklab, var(--tray-break) 82%, var(--text));
+  background: color-mix(in srgb, var(--tray-break) 14%, oklch(0.20 0.005 250));
+  border-color: color-mix(in srgb, var(--tray-break) 35%, var(--line-soft));
 }
 .status-pill[data-phase="Break"] .status-pulse {
-  background: var(--break);
+  background: var(--tray-break);
+}
+.status-pill[data-phase="Break"][data-running="true"] .status-pulse {
   animation: pulse 1.6s ease-in-out infinite;
 }
 @keyframes pulse {

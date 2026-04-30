@@ -27,7 +27,7 @@ beforeEach(() => {
           <span class="brand-dot" data-testid="brand-dot"></span>
           <h1>focusdot</h1>
         </div>
-        <span class="status-pill" data-testid="status-pill">
+        <span class="status-pill" data-testid="status-pill" data-phase="Idle">
           <span class="status-pulse" aria-hidden="true"></span>
           <span class="status-text">Idle</span>
         </span>

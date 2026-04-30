@@ -111,6 +111,11 @@ export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
   const railFill = document.querySelector<HTMLElement>(".timer-card .rail-fill");
   if (statusPill) {
     statusPill.setAttribute("data-phase", snapshot.phase);
+    if (snapshot.phase === "Idle") {
+      statusPill.removeAttribute("data-running");
+    } else {
+      statusPill.setAttribute("data-running", snapshot.running ? "true" : "false");
+    }
   }
   if (statusText) {
     const short: Record<TimerSnapshot["phase"], string> = {
