@@ -25,19 +25,19 @@ pub fn calculate_stats(history: &History, now: DateTime<Utc>) -> Stats {
         .filter(|session| session.started_at.with_timezone(&Local).date_naive() == today)
         .count();
 
-    let focus_minutes_today = history
+    let focus_minutes_today: u32 = history
         .sessions
         .iter()
         .filter(|session| session.started_at.with_timezone(&Local).date_naive() == today)
         .map(|session| session.duration_minutes)
-        .sum();
+        .sum::<u32>();
 
-    let focus_minutes_this_week = history
+    let focus_minutes_this_week: u32 = history
         .sessions
         .iter()
         .filter(|session| session.started_at.with_timezone(&Local).iso_week() == current_week)
         .map(|session| session.duration_minutes)
-        .sum();
+        .sum::<u32>();
 
     let session_dates: HashSet<NaiveDate> = history
         .sessions
