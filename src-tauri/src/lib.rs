@@ -161,7 +161,16 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("failed to build Punto");
 
-    app.run(|_handle, event| {
-        let _ = event;
+    app.run(|handle, event| {
+        if let tauri::RunEvent::WindowEvent { label, event: win_event, .. } = event {
+            if label == "main" {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = win_event {
+                    api.prevent_close();
+                    if let Some(w) = handle.get_webview_window("main") {
+                        let _ = w.hide();
+                    }
+                }
+            }
+        }
     });
 }
