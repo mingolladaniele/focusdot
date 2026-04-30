@@ -1,7 +1,45 @@
+# ── Dependencies & installs ──
 node_modules/
+
+# ── Frontend (Vite) ──
 dist/
+dist-ssr/
+.vite/
+*.local
+
+# ── Rust / Tauri ──
 src-tauri/target/
 src-tauri/gen/
-*.log
+**/*.rs.bk
+*.pdb
+
+# ── Env & secrets ──
 .env
+.env.*
+!.env.example
+
+# ── Logs & debug ──
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Test / coverage ──
+coverage/
+*.lcov
+
+# ── TypeScript / tooling ──
+*.tsbuildinfo
+.turbo/
+
+# ── OS & editors ──
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+
+# ── Project worktrees (superpowers / local isolation) ──
 .worktrees/
+worktrees/
