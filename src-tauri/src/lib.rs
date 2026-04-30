@@ -200,9 +200,10 @@ fn spawn_timer_loop(state: Arc<AppState>) {
                     .remaining_seconds
                     .saturating_div(60)
                     .max(1);
+                let stats = crate::stats::calculate_stats(&core.history, Utc::now());
                 let app = state.app.clone();
                 drop(core);
-                let _ = notify_focus_complete(&app, bm);
+                let _ = notify_focus_complete(&app, &stats, bm);
                 let _ = set_tray_icon_phase(&app, Phase::Break);
                 let _ = refresh_tray_menu(&app, &state);
                 let _ = app.emit("timer-tick", &snapshot);
@@ -211,9 +212,10 @@ fn spawn_timer_loop(state: Arc<AppState>) {
         }
 
         if old_phase == Phase::Break && core.timer.phase() == Phase::Idle {
+            let stats = crate::stats::calculate_stats(&core.history, Utc::now());
             let app = state.app.clone();
             drop(core);
-            let _ = notify_break_complete(&app);
+            let _ = notify_break_complete(&app, &stats);
             let _ = set_tray_icon_phase(&app, Phase::Idle);
             let _ = refresh_tray_menu(&app, &state);
             let _ = app.emit("timer-tick", &snapshot);
