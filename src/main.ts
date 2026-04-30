@@ -99,8 +99,9 @@ export async function bootstrap(): Promise<void> {
     /* ignore: snapshot will arrive via event */
   }
 
-  await listen<TimerSnapshot>("timer-tick", (e) => {
+  await listen<TimerSnapshot>("timer-tick", async (e) => {
     if (e.payload) applyTimerSnapshot(e.payload);
+    await loadStats();
   });
 }
 
