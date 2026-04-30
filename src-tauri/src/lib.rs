@@ -2,6 +2,7 @@ pub mod autostart;
 pub mod history;
 pub mod notifications;
 pub mod presets;
+pub mod settings;
 mod state;
 pub mod stats;
 pub mod storage;
@@ -45,7 +46,7 @@ fn save_preset(
 ) -> Result<Preset, String> {
     let preset = {
         let mut core = state.inner.lock().map_err(|e| e.to_string())?;
-        let p = core.presets.add(input).map_err(|e| e.to_string())?;
+        let p = core.presets.upsert(input).map_err(|e| e.to_string())?;
         save_json(&core.presets_path, &core.presets).map_err(|e| e.to_string())?;
         p
     };
@@ -88,6 +89,31 @@ fn get_timer(state: tauri::State<'_, Arc<AppState>>) -> Result<TimerSnapshot, St
     Ok(core.timer.snapshot())
 }
 
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AppSettingsDto {
+    auto_start_next_focus_after_break: bool,
+}
+
+#[tauri::command]
+fn get_app_settings(state: tauri::State<'_, Arc<AppState>>) -> Result<AppSettingsDto, String> {
+    let core = state.inner.lock().map_err(|e| e.to_string())?;
+    Ok(AppSettingsDto {
+        auto_start_next_focus_after_break: core.settings.auto_start_next_focus_after_break,
+    })
+}
+
+#[tauri::command]
+fn set_auto_start_next_focus_after_break(
+    state: tauri::State<'_, Arc<AppState>>,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+    core.settings.auto_start_next_focus_after_break = enabled;
+    save_json(&core.settings_path, &core.settings).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[tauri::command]
 fn start_preset(
     app: AppHandle,
@@ -103,6 +129,7 @@ fn start_preset(
             .find(|p| p.id == id)
             .cloned()
             .ok_or_else(|| "preset not found".to_string())?;
+        let auto_next = core.settings.auto_start_next_focus_after_break;
         let timer = core
             .timer
             .clone()
@@ -111,7 +138,7 @@ fn start_preset(
                 preset.focus_minutes,
                 preset.break_minutes,
                 preset.cycles,
-                preset.auto_start_next,
+                auto_next,
             )
             .map_err(|e| e.to_string())?;
         core.timer = timer;
@@ -245,8 +272,14 @@ pub fn run() {
             std::fs::create_dir_all(&dir).map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
             let history_path = dir.join("history.json");
             let presets_path = dir.join("presets.json");
+            let settings_path = dir.join("settings.json");
 
-            let state = Arc::new(AppState::new(handle.clone(), history_path, presets_path));
+            let state = Arc::new(AppState::new(
+                handle.clone(),
+                history_path,
+                presets_path,
+                settings_path,
+            ));
             app.manage(state.clone());
 
             install_tray(app, state.clone()).map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
@@ -261,6 +294,8 @@ pub fn run() {
             get_stats,
             reset_history,
             get_timer,
+            get_app_settings,
+            set_auto_start_next_focus_after_break,
             start_preset,
             pause_timer,
             resume_timer,

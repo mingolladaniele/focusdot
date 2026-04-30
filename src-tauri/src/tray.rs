@@ -180,7 +180,7 @@ pub fn handle_menu_event<R: Runtime>(
                             preset.focus_minutes,
                             preset.break_minutes,
                             preset.cycles,
-                            preset.auto_start_next,
+                            c.settings.auto_start_next_focus_after_break,
                         ) {
                             c.timer = t;
                             c.focus_started_at = Some(Utc::now());
