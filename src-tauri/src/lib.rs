@@ -107,7 +107,12 @@ fn start_preset(
             .timer
             .clone()
             .stop()
-            .start_focus(preset.focus_minutes, preset.break_minutes)
+            .start_focus(
+                preset.focus_minutes,
+                preset.break_minutes,
+                preset.cycles,
+                preset.auto_start_next,
+            )
             .map_err(|e| e.to_string())?;
         core.timer = timer;
         core.focus_started_at = Some(Utc::now());

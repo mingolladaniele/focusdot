@@ -147,12 +147,12 @@ pub fn handle_menu_event<R: Runtime>(
             if let Ok(uid) = Uuid::parse_str(rest) {
                 if let Ok(mut c) = state.inner.lock() {
                     if let Some(preset) = c.presets.all().iter().find(|p| p.id == uid).cloned() {
-                        if let Ok(t) = c
-                            .timer
-                            .clone()
-                            .stop()
-                            .start_focus(preset.focus_minutes, preset.break_minutes)
-                        {
+                        if let Ok(t) = c.timer.clone().stop().start_focus(
+                            preset.focus_minutes,
+                            preset.break_minutes,
+                            preset.cycles,
+                            preset.auto_start_next,
+                        ) {
                             c.timer = t;
                             c.focus_started_at = Some(Utc::now());
                         }

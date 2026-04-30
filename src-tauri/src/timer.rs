@@ -15,6 +15,8 @@ pub struct TimerSnapshot {
     pub remaining_seconds: u32,
     pub focus_minutes: u32,
     pub break_minutes: u32,
+    pub cycles_remaining: u32,
+    pub auto_start_next: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -23,6 +25,8 @@ pub struct Timer {
     remaining_seconds: u32,
     focus_minutes: u32,
     break_minutes: u32,
+    cycles_remaining: u32,
+    auto_start_next: bool,
     running: bool,
 }
 
@@ -55,12 +59,20 @@ impl Timer {
             remaining_seconds: 0,
             focus_minutes: 0,
             break_minutes: 0,
+            cycles_remaining: 0,
+            auto_start_next: false,
             running: false,
         }
     }
 
-    pub fn start_focus(mut self, focus_minutes: u32, break_minutes: u32) -> Result<Self, TimerError> {
-        if focus_minutes == 0 || break_minutes == 0 {
+    pub fn start_focus(
+        mut self,
+        focus_minutes: u32,
+        break_minutes: u32,
+        cycles: u32,
+        auto_start_next: bool,
+    ) -> Result<Self, TimerError> {
+        if focus_minutes == 0 || break_minutes == 0 || cycles == 0 {
             return Err(TimerError::InvalidMinutes);
         }
 
@@ -68,6 +80,8 @@ impl Timer {
         self.remaining_seconds = focus_minutes * 60;
         self.focus_minutes = focus_minutes;
         self.break_minutes = break_minutes;
+        self.cycles_remaining = cycles - 1;
+        self.auto_start_next = auto_start_next;
         self.running = true;
         Ok(self)
     }
@@ -99,12 +113,18 @@ impl Timer {
 
     pub fn tick(mut self, elapsed_seconds: u32) -> TickResult {
         if !self.running || self.phase == Phase::Idle {
-            return TickResult { timer: self, event: None };
+            return TickResult {
+                timer: self,
+                event: None,
+            };
         }
 
         if elapsed_seconds < self.remaining_seconds {
             self.remaining_seconds -= elapsed_seconds;
-            return TickResult { timer: self, event: None };
+            return TickResult {
+                timer: self,
+                event: None,
+            };
         }
 
         match self.phase {
@@ -121,12 +141,27 @@ impl Timer {
                 }
             }
             Phase::Break => {
-                self.phase = Phase::Idle;
-                self.remaining_seconds = 0;
-                self.running = false;
-                TickResult { timer: self, event: None }
+                if self.cycles_remaining > 0 && self.auto_start_next {
+                    self.cycles_remaining -= 1;
+                    self.phase = Phase::Focus;
+                    self.remaining_seconds = self.focus_minutes * 60;
+                    self.running = true;
+                } else {
+                    self.phase = Phase::Idle;
+                    self.remaining_seconds = 0;
+                    self.cycles_remaining = 0;
+                    self.auto_start_next = false;
+                    self.running = false;
+                }
+                TickResult {
+                    timer: self,
+                    event: None,
+                }
             }
-            Phase::Idle => TickResult { timer: self, event: None },
+            Phase::Idle => TickResult {
+                timer: self,
+                event: None,
+            },
         }
     }
 
@@ -149,6 +184,8 @@ impl Timer {
             remaining_seconds: self.remaining_seconds,
             focus_minutes: self.focus_minutes,
             break_minutes: self.break_minutes,
+            cycles_remaining: self.cycles_remaining,
+            auto_start_next: self.auto_start_next,
         }
     }
 }
