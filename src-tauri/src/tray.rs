@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use crate::state::AppState;
 use crate::timer::Phase;
+use crate::window_layout::show_main_window_bottom_right;
 
 const ICON_SIZE: u32 = 32;
 
@@ -145,9 +146,7 @@ pub fn handle_menu_event<R: Runtime>(
         "exit" => app.exit(0),
         "settings" => {
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.unminimize();
-                let _ = window.show();
-                let _ = window.set_focus();
+                show_main_window_bottom_right(&window);
             }
         }
         "pause" => {
@@ -242,8 +241,7 @@ pub fn install_tray<R: Runtime>(app: &mut tauri::App<R>, state: Arc<AppState>) -
             } = event
             {
                 if let Some(w) = tray.app_handle().get_webview_window("main") {
-                    let _ = w.show();
-                    let _ = w.set_focus();
+                    show_main_window_bottom_right(&w);
                 }
             }
         })

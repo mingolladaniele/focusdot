@@ -12,7 +12,8 @@
     "test:frontend": "vitest run --environment jsdom",
     "test:rust": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cargo-path.ps1 test --manifest-path src-tauri/Cargo.toml",
     "tauri": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-tauri.ps1",
-    "build:installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-tauri.ps1 build"
+    "build:installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-tauri.ps1 build",
+    "build:msi": "npm run typecheck && npm test && npm run build:installer"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0"

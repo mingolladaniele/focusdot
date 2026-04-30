@@ -8,6 +8,7 @@ pub mod stats;
 pub mod storage;
 pub mod timer;
 mod tray;
+mod window_layout;
 
 use std::sync::Arc;
 use std::thread;
@@ -25,6 +26,7 @@ use crate::stats::Stats;
 use crate::storage::save_json;
 use crate::timer::{should_emit_periodic_timer_tick, Phase, TimerSnapshot};
 use crate::tray::{install_tray, refresh_tray_menu, set_tray_icon_phase, window_title_icon};
+use crate::window_layout::show_main_window_bottom_right;
 
 fn data_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     app.path()
@@ -265,7 +267,31 @@ fn spawn_timer_loop(state: Arc<AppState>) {
 }
 
 pub fn run() {
-    let app = tauri::Builder::default()
+    // Single-instance must be the first plugin so a second launch exits and
+    // delegates here instead of starting another process (tray/timer/state).
+    #[cfg_attr(
+        not(any(
+            target_os = "macos",
+            target_os = "windows",
+            target_os = "linux"
+        )),
+        allow(unused_mut)
+    )]
+    let mut builder = tauri::Builder::default();
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "windows",
+        target_os = "linux"
+    ))]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(w) = app.get_webview_window("main") {
+                show_main_window_bottom_right(&w);
+            }
+        }));
+    }
+
+    let app = builder
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .setup(|app| {

@@ -28,3 +28,6 @@ uuid = { version = "1", features = ["v4", "serde"] }
 
 [dev-dependencies]
 assert_fs = "1"
+
+[target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = "2"
