@@ -85,6 +85,9 @@ pub fn build_root_menu<R: Runtime>(
         items.push(Box::new(stop));
     }
 
+    let settings = MenuItem::with_id(handle, "settings", "Settings", true, None::<&str>)?;
+    items.push(Box::new(settings));
+
     let sep = PredefinedMenuItem::separator(handle)?;
     items.push(Box::new(sep));
 
@@ -103,6 +106,13 @@ pub fn handle_menu_event<R: Runtime>(
     let id = event.id().as_ref();
     match id {
         "exit" => app.exit(0),
+        "settings" => {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }
         "pause" => {
             if let Ok(mut c) = state.inner.lock() {
                 if let Ok(t) = c.timer.clone().pause() {
