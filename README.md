@@ -50,8 +50,9 @@ Requires [Node.js](https://nodejs.org/) 20+, [Rust](https://rustup.rs/) stable, 
 | Goal | Command |
 |------|---------|
 | Dev server | `npm install` then `npm run tauri dev` |
-| Production installer | `npm run build:installer` → MSI under `src-tauri\target\release\bundle\msi\` |
-| Tests | `npm test` (Vitest + `cargo test`). Also: `npm run typecheck`, `npm run build`, `npm run test:frontend`, `npm run test:rust` |
+| Production + MSI | `npm run build` (alias: `npm run build:installer`) → MSI under `src-tauri\target\release\bundle\msi\`; frontend is built by Tauri `beforeBuildCommand` (`npm run build:prod`) |
+| Production frontend only | `npm run build:prod` → `dist/` |
+| Tests | `npm test` (Vitest + `cargo test`). Also: `npm run typecheck`, `npm run test:frontend`, `npm run test:rust` |
 
 `src/` is the Vite + TypeScript dashboard; `src-tauri/` is Rust (timer, tray, notifications, persistence). Bundled icon sources live in `assets/`.
 

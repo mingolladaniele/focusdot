@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run build:prod",
+    "build": "npm run build:installer",
     "build:prod": "tsc && vite build --mode production",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:frontend && npm run test:rust",
