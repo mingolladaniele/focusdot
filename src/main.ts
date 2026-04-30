@@ -43,6 +43,23 @@ const PHASE_LABEL: Record<TimerSnapshot["phase"], string> = {
   Break: "Break"
 };
 
+const ICON_PLAY =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>';
+const ICON_EDIT =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+const ICON_DELETE =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-9h1.64l.41 6h-2.46l.41-6zm4.54 0h1.64l.41 6h-2.46l.41-6zM15.5 4l-1-1h-5l-1 1H5v2h14V4h-3.5z"/></svg>';
+
+function presetIconButton(iconSvg: string, className: string, label: string): HTMLButtonElement {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = className;
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
+  btn.innerHTML = `<span class="preset-icon-btn__glyph">${iconSvg}</span>`;
+  return btn;
+}
+
 function formatMmSs(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
@@ -139,10 +156,7 @@ async function loadPresets(): Promise<void> {
     const actions = document.createElement("div");
     actions.className = "preset-actions";
 
-    const edit = document.createElement("button");
-    edit.type = "button";
-    edit.className = "ghost";
-    edit.textContent = "Edit";
+    const edit = presetIconButton(ICON_EDIT, "preset-icon-btn preset-icon-btn--edit", "Edit preset");
     edit.addEventListener("click", () => {
       const hid = document.querySelector<HTMLInputElement>("#preset-id");
       const nameIn = document.querySelector<HTMLInputElement>("#preset-name");
@@ -159,18 +173,16 @@ async function loadPresets(): Promise<void> {
     });
     actions.appendChild(edit);
 
-    const start = document.createElement("button");
-    start.type = "button";
-    start.textContent = "Start";
-    start.title = "Start a focus session with this preset";
+    const start = presetIconButton(
+      ICON_PLAY,
+      "preset-icon-btn preset-icon-btn--start",
+      "Start a focus session with this preset"
+    );
     start.addEventListener("click", async () => {
       await invoke("start_preset", { id: p.id });
     });
     actions.appendChild(start);
-    const del = document.createElement("button");
-    del.type = "button";
-    del.className = "ghost";
-    del.textContent = "Delete";
+    const del = presetIconButton(ICON_DELETE, "preset-icon-btn preset-icon-btn--delete", "Delete preset");
     del.addEventListener("click", async () => {
       await invoke("delete_preset", { id: p.id });
       await loadPresets();

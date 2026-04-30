@@ -24,7 +24,7 @@ use crate::state::AppState;
 use crate::stats::Stats;
 use crate::storage::save_json;
 use crate::timer::{Phase, TimerSnapshot};
-use crate::tray::{install_tray, refresh_tray_menu, set_tray_icon_phase};
+use crate::tray::{icon_for_phase, install_tray, refresh_tray_menu, set_tray_icon_phase};
 
 fn data_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     app.path()
@@ -284,6 +284,10 @@ pub fn run() {
 
             install_tray(app, state.clone()).map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
             spawn_timer_loop(state);
+
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.set_icon(icon_for_phase(Phase::Idle));
+            }
 
             Ok(())
         })
