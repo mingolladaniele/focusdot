@@ -11,26 +11,75 @@
     <main id="app">
       <header class="topbar">
         <div class="brand">
-          <span class="brand-dot" data-testid="brand-dot"></span>
+          <span class="brand-dot" data-testid="brand-dot" data-phase="Idle"></span>
           <h1>focusdot</h1>
         </div>
+        <span class="status-pill" data-testid="status-pill">
+          <span class="status-pulse" aria-hidden="true"></span>
+          <span class="status-text">Idle</span>
+        </span>
       </header>
 
+      <!-- ============ TIMER ============ -->
       <section class="card timer-card" aria-labelledby="timer-title">
-        <h2 id="timer-title">Current session</h2>
-        <p class="phase" data-testid="timer-phase">Idle</p>
+        <div class="section-head">
+          <h2 id="timer-title">Current session</h2>
+          <p class="phase" data-testid="timer-phase">Idle</p>
+        </div>
         <p class="time" data-testid="timer-display">--:--</p>
+        <div class="rail" aria-hidden="true">
+          <div class="rail-fill" style="width: 0%"></div>
+        </div>
         <div class="controls">
-          <button type="button" id="btn-pause" data-testid="btn-pause" title="Suspend the countdown without losing remaining time">Pause</button>
-          <button type="button" id="btn-resume" data-testid="btn-resume" title="Continue from where Pause left off">Resume</button>
-          <button type="button" id="btn-stop" data-testid="btn-stop" title="Cancel the current session and go back to Idle">Stop</button>
+          <button
+            type="button"
+            id="btn-pause"
+            data-testid="btn-pause"
+            class="btn btn-ghost"
+            title="Suspend the countdown without losing remaining time"
+          >
+            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <line x1="9" y1="5" x2="9" y2="19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              <line x1="15" y1="5" x2="15" y2="19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            Pause
+          </button>
+          <button
+            type="button"
+            id="btn-resume"
+            data-testid="btn-resume"
+            class="btn btn-primary"
+            title="Continue from where Pause left off"
+          >
+            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 5.5v13l11-6.5z" fill="currentColor"/>
+            </svg>
+            Resume
+          </button>
+          <button
+            type="button"
+            id="btn-stop"
+            data-testid="btn-stop"
+            class="btn btn-ghost"
+            title="Cancel the current session and go back to Idle"
+          >
+            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="6" y="6" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+            Stop
+          </button>
         </div>
       </section>
 
+      <!-- ============ PRESETS ============ -->
       <section class="card" aria-labelledby="presets-title">
-        <h2 id="presets-title">Presets</h2>
+        <div class="section-head">
+          <h2 id="presets-title">Presets</h2>
+        </div>
         <ul id="preset-list" class="preset-list" data-testid="preset-list"></ul>
+
         <form id="preset-form" class="preset-form">
+          <div class="form-eyebrow">New preset</div>
           <input type="hidden" id="preset-id" name="presetId" value="" />
           <label class="field" for="preset-name">
             <span>Name</span>
@@ -49,15 +98,19 @@
             <input id="cycles" name="cycles" type="number" min="1" value="1" />
           </label>
           <div class="preset-form-actions">
-            <button class="primary" type="submit" id="preset-submit">Save preset</button>
-            <button type="button" class="ghost" id="preset-cancel-edit" hidden>Cancel edit</button>
+            <button class="btn btn-primary" type="submit" id="preset-submit">Save preset</button>
+            <button type="button" class="btn btn-link" id="preset-cancel-edit" hidden>Cancel edit</button>
           </div>
         </form>
         <p id="preset-error" class="error" role="alert"></p>
       </section>
 
+      <!-- ============ STATS ============ -->
       <section class="card stats-card" aria-labelledby="stats-title">
-        <h2 id="stats-title">Statistics</h2>
+        <div class="section-head">
+          <h2 id="stats-title">Statistics</h2>
+          <button type="button" id="reset-history" class="btn-link-danger">Reset</button>
+        </div>
         <div class="stats-grid">
           <div class="stat-tile">
             <span class="stat-value" data-testid="sessions-today">0</span>
@@ -76,21 +129,38 @@
             <span class="stat-label">This week</span>
           </div>
         </div>
-        <button type="button" class="danger" id="reset-history">Reset statistics</button>
       </section>
 
+      <!-- ============ APP ============ -->
       <section class="card" aria-labelledby="startup-title">
-        <h2 id="startup-title">App</h2>
-        <label class="toggle">
-          <input type="checkbox" id="auto-start-next-focus" />
-          Auto-start next focus after break
-        </label>
-        <label class="toggle">
-          <input type="checkbox" id="launch-startup" />
-          Launch on Windows startup
-        </label>
+        <div class="section-head">
+          <h2 id="startup-title">App</h2>
+        </div>
+        <div class="toggle-list">
+          <label class="toggle">
+            <span class="toggle-text">
+              <span class="toggle-label">Auto-start next focus after break</span>
+              <span class="toggle-hint">Skip the manual nudge between cycles.</span>
+            </span>
+            <span class="switch">
+              <input type="checkbox" id="auto-start-next-focus" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+          <label class="toggle">
+            <span class="toggle-text">
+              <span class="toggle-label">Launch on Windows startup</span>
+              <span class="toggle-hint">Open focusdot when you sign in.</span>
+            </span>
+            <span class="switch">
+              <input type="checkbox" id="launch-startup" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+        </div>
       </section>
     </main>
+
     <script type="module">
       import { bootstrap } from "/src/main.ts";
       bootstrap();
