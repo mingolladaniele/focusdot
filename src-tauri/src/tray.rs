@@ -10,22 +10,41 @@ use uuid::Uuid;
 use crate::state::AppState;
 use crate::timer::Phase;
 
-fn rgba_icon(r: u8, g: u8, b: u8) -> Image<'static> {
-    let mut buf = vec![0u8; 32 * 32 * 4];
-    for px in buf.chunks_mut(4) {
-        px[0] = r;
-        px[1] = g;
-        px[2] = b;
-        px[3] = 255;
+const ICON_SIZE: u32 = 32;
+
+/// 32×32 RGBA disk with 1px edge feather; outside = transparent.
+fn circular_icon(fill: (u8, u8, u8)) -> Image<'static> {
+    let size = ICON_SIZE as i32;
+    let radius = (size as f32) / 2.0 - 1.0;
+    let centre = (size as f32 - 1.0) / 2.0;
+    let mut buf = vec![0u8; (size * size * 4) as usize];
+    for y in 0..size {
+        for x in 0..size {
+            let dx = x as f32 - centre;
+            let dy = y as f32 - centre;
+            let dist = (dx * dx + dy * dy).sqrt();
+            let alpha = if dist <= radius - 1.0 {
+                255.0
+            } else if dist <= radius {
+                255.0 * (radius - dist).max(0.0)
+            } else {
+                0.0
+            };
+            let i = ((y * size + x) * 4) as usize;
+            buf[i] = fill.0;
+            buf[i + 1] = fill.1;
+            buf[i + 2] = fill.2;
+            buf[i + 3] = alpha as u8;
+        }
     }
-    Image::new_owned(buf, 32, 32)
+    Image::new_owned(buf, ICON_SIZE, ICON_SIZE)
 }
 
 pub fn icon_for_phase(phase: Phase) -> Image<'static> {
     match phase {
-        Phase::Focus => rgba_icon(80, 180, 80),
-        Phase::Break => rgba_icon(80, 140, 220),
-        Phase::Idle => rgba_icon(140, 140, 140),
+        Phase::Idle => circular_icon((255, 255, 255)),
+        Phase::Focus => circular_icon((43, 182, 115)),
+        Phase::Break => circular_icon((74, 144, 226)),
     }
 }
 
