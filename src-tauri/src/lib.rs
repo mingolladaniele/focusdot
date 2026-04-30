@@ -279,11 +279,22 @@ pub fn run() {
     app.run(|handle, event| {
         if let tauri::RunEvent::WindowEvent { label, event: win_event, .. } = event {
             if label == "main" {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = win_event {
-                    api.prevent_close();
-                    if let Some(w) = handle.get_webview_window("main") {
-                        let _ = w.hide();
+                match win_event {
+                    tauri::WindowEvent::CloseRequested { api, .. } => {
+                        api.prevent_close();
+                        if let Some(w) = handle.get_webview_window("main") {
+                            let _ = w.hide();
+                        }
                     }
+                    tauri::WindowEvent::Resized(_) => {
+                        if let Some(w) = handle.get_webview_window("main") {
+                            if w.is_minimized().unwrap_or(false) {
+                                let _ = w.unminimize();
+                                let _ = w.hide();
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
