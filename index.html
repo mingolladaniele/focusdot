@@ -42,6 +42,14 @@
             <span>Break minutes</span>
             <input id="break-minutes" name="breakMinutes" type="number" min="1" placeholder="5" required />
           </label>
+          <label class="field" for="cycles">
+            <span>Cycles</span>
+            <input id="cycles" name="cycles" type="number" min="1" value="1" />
+          </label>
+          <label class="toggle field" for="auto-start-next">
+            <input type="checkbox" id="auto-start-next" name="autoStartNext" />
+            Auto-start next focus after break
+          </label>
           <button class="primary" type="submit">Save preset</button>
         </form>
         <p id="preset-error" class="error" role="alert"></p>
@@ -50,6 +58,8 @@
       <section class="card" aria-labelledby="stats-title">
         <h2 id="stats-title">Statistics</h2>
         <p class="stat" data-testid="sessions-today">0 sessions today</p>
+        <p class="stat" data-testid="focus-today">0m today</p>
+        <p class="stat" data-testid="streak-days">No streak yet</p>
         <p class="stat" data-testid="focus-this-week">0h 0m this week</p>
         <button type="button" class="ghost" id="reset-history">Reset statistics</button>
       </section>

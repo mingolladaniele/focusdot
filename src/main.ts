@@ -1,13 +1,20 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { parsePresetForm } from "./presets";
-import { formatFocusMinutes, formatSessionsToday } from "./stats";
+import {
+  formatFocusMinutes,
+  formatFocusMinutesToday,
+  formatSessionsToday,
+  formatStreakDays
+} from "./stats";
 
 export type PresetRow = {
   id: string;
   name: string;
   focusMinutes: number;
   breakMinutes: number;
+  cycles: number;
+  autoStartNext: boolean;
 };
 
 type StatsResponse = {
@@ -23,6 +30,8 @@ export type TimerSnapshot = {
   remaining_seconds: number;
   focus_minutes: number;
   break_minutes: number;
+  cycles_remaining: number;
+  auto_start_next: boolean;
 };
 
 const PHASE_LABEL: Record<TimerSnapshot["phase"], string> = {
@@ -88,8 +97,12 @@ async function loadStats(): Promise<void> {
   const stats = await invoke<StatsResponse>("get_stats");
   const sessionsToday = document.querySelector<HTMLElement>("[data-testid='sessions-today']");
   const focusThisWeek = document.querySelector<HTMLElement>("[data-testid='focus-this-week']");
+  const focusToday = document.querySelector<HTMLElement>("[data-testid='focus-today']");
+  const streak = document.querySelector<HTMLElement>("[data-testid='streak-days']");
   if (sessionsToday) sessionsToday.textContent = formatSessionsToday(stats.sessionsToday);
   if (focusThisWeek) focusThisWeek.textContent = formatFocusMinutes(stats.focusMinutesThisWeek);
+  if (focusToday) focusToday.textContent = formatFocusMinutesToday(stats.focusMinutesToday);
+  if (streak) streak.textContent = formatStreakDays(stats.currentStreakDays);
 }
 
 async function loadPresets(): Promise<void> {
@@ -105,7 +118,9 @@ async function loadPresets(): Promise<void> {
     const name = document.createElement("strong");
     name.textContent = p.name;
     const detail = document.createElement("small");
-    detail.textContent = `${p.focusMinutes}m focus · ${p.breakMinutes}m break`;
+    const cyclesPart =
+      p.cycles > 1 ? ` · ${p.cycles}× ${p.autoStartNext ? "auto" : "manual"}` : "";
+    detail.textContent = `${p.focusMinutes}m focus · ${p.breakMinutes}m break${cyclesPart}`;
     meta.appendChild(name);
     meta.appendChild(detail);
     li.appendChild(meta);

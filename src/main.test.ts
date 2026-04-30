@@ -32,6 +32,8 @@ beforeEach(() => {
       <section class="card" aria-labelledby="stats-title">
         <h2 id="stats-title">Statistics</h2>
         <p class="stat" data-testid="sessions-today">0 sessions today</p>
+        <p class="stat" data-testid="focus-today">0m today</p>
+        <p class="stat" data-testid="streak-days">No streak yet</p>
         <p class="stat" data-testid="focus-this-week">0h 0m this week</p>
         <button type="button" class="ghost" id="reset-history">Reset statistics</button>
       </section>
@@ -45,6 +47,11 @@ beforeEach(() => {
             <input id="focus-minutes" name="focusMinutes" type="number" min="1" required /></label>
           <label class="field" for="break-minutes"><span>Break minutes</span>
             <input id="break-minutes" name="breakMinutes" type="number" min="1" required /></label>
+          <label class="field" for="cycles"><span>Cycles</span>
+            <input id="cycles" name="cycles" type="number" min="1" value="1" /></label>
+          <label class="toggle field" for="auto-start-next">
+            <input type="checkbox" id="auto-start-next" name="autoStartNext" />
+            Auto-start next focus after break</label>
           <button class="primary" type="submit">Save preset</button>
         </form>
         <p id="preset-error" class="error" role="alert"></p>
@@ -67,7 +74,9 @@ describe("settings window", () => {
       running: true,
       remaining_seconds: 125,
       focus_minutes: 25,
-      break_minutes: 5
+      break_minutes: 5,
+      cycles_remaining: 0,
+      auto_start_next: false
     });
 
     expect(screen.getByTestId("timer-phase").textContent).toBe("Focus session");
@@ -93,7 +102,9 @@ describe("settings window", () => {
           running: true,
           remaining_seconds: 60,
           focus_minutes: 25,
-          break_minutes: 5
+          break_minutes: 5,
+          cycles_remaining: 0,
+          auto_start_next: false
         });
       }
       return Promise.resolve(undefined);
@@ -123,7 +134,9 @@ describe("settings window", () => {
           running: false,
           remaining_seconds: 0,
           focus_minutes: 0,
-          break_minutes: 0
+          break_minutes: 0,
+          cycles_remaining: 0,
+          auto_start_next: false
         });
       }
       return Promise.resolve(undefined);
@@ -132,6 +145,8 @@ describe("settings window", () => {
     await bootstrap();
 
     expect(screen.getByTestId("sessions-today").textContent).toBe("2 sessions today");
+    expect(screen.getByTestId("focus-today").textContent).toBe("50m today");
+    expect(screen.getByTestId("streak-days").textContent).toBe("3 day streak");
     expect(screen.getByTestId("focus-this-week").textContent).toBe("1h 20m this week");
     expect(invoke).toHaveBeenCalledWith("get_stats");
   });
@@ -154,7 +169,9 @@ describe("settings window", () => {
           running: false,
           remaining_seconds: 0,
           focus_minutes: 0,
-          break_minutes: 0
+          break_minutes: 0,
+          cycles_remaining: 0,
+          auto_start_next: false
         });
       }
       return Promise.resolve(undefined);
@@ -167,7 +184,13 @@ describe("settings window", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save preset" }));
 
     expect(invoke).toHaveBeenCalledWith("save_preset", {
-      input: { name: "Focus", focusMinutes: 25, breakMinutes: 5 }
+      input: {
+        name: "Focus",
+        focusMinutes: 25,
+        breakMinutes: 5,
+        cycles: 1,
+        autoStartNext: false
+      }
     });
   });
 });
