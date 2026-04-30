@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
+use chrono::Utc;
 use tauri::image::Image;
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};
-use tauri::menu::IsMenuItem;
+use tauri::menu::{IsMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use uuid::Uuid;
 
@@ -29,63 +29,79 @@ pub fn icon_for_phase(phase: Phase) -> Image<'static> {
     }
 }
 
-fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
-    if let Some(w) = app.get_webview_window("main") {
-        let _ = w.show();
-        let _ = w.set_focus();
-    }
-}
-
 /// Build root tray menu (presets submenu + controls).
 pub fn build_root_menu<R: Runtime>(
     handle: &AppHandle<R>,
     state: &Arc<AppState>,
 ) -> tauri::Result<Menu<R>> {
-    let pause = MenuItem::with_id(handle, "pause", "Pause", true, None::<&str>)?;
-    let resume = MenuItem::with_id(handle, "resume", "Resume", true, None::<&str>)?;
-    let stop = MenuItem::with_id(handle, "stop", "Stop", true, None::<&str>)?;
-    let stats = MenuItem::with_id(handle, "stats", "View statistics", true, None::<&str>)?;
-    let settings = MenuItem::with_id(handle, "settings", "Settings / edit presets", true, None::<&str>)?;
-    let sep = PredefinedMenuItem::separator(handle)?;
-    let exit = MenuItem::with_id(handle, "exit", "Exit", true, None::<&str>)?;
-
     let core = state.inner.lock().expect("state mutex poisoned");
+    let phase = core.timer.phase();
+    let running = core.timer.is_running();
+    let presets_snapshot = core.presets.all().to_vec();
+    drop(core);
 
-    let preset_items: Vec<MenuItem<R>> = core
-        .presets
-        .all()
-        .iter()
-        .map(|p| {
-            let id = format!("preset:{}", p.id);
-            let text = format!("Start {} ({}m / {}m)", p.name, p.focus_minutes, p.break_minutes);
-            MenuItem::with_id(handle, id, text, true, None::<&str>)
-        })
-        .collect::<tauri::Result<_>>()?;
+    let mut items: Vec<Box<dyn IsMenuItem<R>>> = Vec::new();
 
-    let preset_refs: Vec<&dyn IsMenuItem<R>> =
-        preset_items.iter().map(|i| i as &dyn IsMenuItem<R>).collect();
+    if phase == Phase::Idle {
+        let preset_items: Vec<MenuItem<R>> = presets_snapshot
+            .iter()
+            .map(|p| {
+                let id = format!("preset:{}", p.id);
+                let text = format!("{} · {}m / {}m", p.name, p.focus_minutes, p.break_minutes);
+                MenuItem::with_id(handle, id, text, true, None::<&str>)
+            })
+            .collect::<tauri::Result<_>>()?;
+        let preset_refs: Vec<&dyn IsMenuItem<R>> =
+            preset_items.iter().map(|i| i as &dyn IsMenuItem<R>).collect();
+        let presets = Submenu::with_items(
+            handle,
+            "Start preset",
+            !presets_snapshot.is_empty(),
+            &preset_refs,
+        )?;
+        items.push(Box::new(presets));
+    } else if running {
+        let pause = MenuItem::with_id(
+            handle,
+            "pause",
+            "Pause (keep remaining time)",
+            true,
+            None::<&str>,
+        )?;
+        items.push(Box::new(pause));
+    } else {
+        let resume = MenuItem::with_id(handle, "resume", "Resume", true, None::<&str>)?;
+        items.push(Box::new(resume));
+    }
 
-    let submenu = Submenu::with_items(handle, "Presets", true, &preset_refs)?;
+    if phase != Phase::Idle {
+        let stop = MenuItem::with_id(
+            handle,
+            "stop",
+            "Stop (reset to idle)",
+            true,
+            None::<&str>,
+        )?;
+        items.push(Box::new(stop));
+    }
 
-    Menu::with_items(
-        handle,
-        &[
-            &submenu,
-            &pause,
-            &resume,
-            &stop,
-            &stats,
-            &settings,
-            &sep,
-            &exit,
-        ],
-    )
+    let sep = PredefinedMenuItem::separator(handle)?;
+    items.push(Box::new(sep));
+
+    let quit = MenuItem::with_id(handle, "exit", "Quit Punto", true, None::<&str>)?;
+    items.push(Box::new(quit));
+
+    let refs: Vec<&dyn IsMenuItem<R>> = items.iter().map(|b| b.as_ref()).collect();
+    Menu::with_items(handle, &refs)
 }
 
-pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, state: &Arc<AppState>, event: &tauri::menu::MenuEvent) {
+pub fn handle_menu_event<R: Runtime>(
+    app: &AppHandle<R>,
+    state: &Arc<AppState>,
+    event: &tauri::menu::MenuEvent,
+) {
     let id = event.id().as_ref();
     match id {
-        "stats" | "settings" => show_main_window(app),
         "exit" => app.exit(0),
         "pause" => {
             if let Ok(mut c) = state.inner.lock() {
@@ -93,7 +109,8 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, state: &Arc<AppState>, 
                     c.timer = t;
                 }
             }
-            let _ = app.emit("timer-changed", ());
+            let _ = refresh_tray_menu(app, state);
+            let _ = app.emit("timer-tick", ());
         }
         "resume" => {
             if let Ok(mut c) = state.inner.lock() {
@@ -101,30 +118,38 @@ pub fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, state: &Arc<AppState>, 
                     c.timer = t;
                 }
             }
-            let _ = app.emit("timer-changed", ());
+            let _ = refresh_tray_menu(app, state);
+            let _ = app.emit("timer-tick", ());
         }
         "stop" => {
             if let Ok(mut c) = state.inner.lock() {
                 c.timer = c.timer.clone().stop();
                 c.focus_started_at = None;
             }
-            let _ = app.emit("timer-changed", ());
+            let _ = set_tray_icon_phase(app, Phase::Idle);
+            let _ = refresh_tray_menu(app, state);
+            let _ = app.emit("timer-tick", ());
         }
         s if s.starts_with("preset:") => {
             let rest = s.trim_start_matches("preset:");
             if let Ok(uid) = Uuid::parse_str(rest) {
                 if let Ok(mut c) = state.inner.lock() {
-                    if let Some(preset) = c.presets.all().iter().find(|p| p.id == uid) {
-                        let fm = preset.focus_minutes;
-                        let bm = preset.break_minutes;
-                        if let Ok(t) = c.timer.clone().stop().start_focus(fm, bm) {
+                    if let Some(preset) = c.presets.all().iter().find(|p| p.id == uid).cloned() {
+                        if let Ok(t) = c
+                            .timer
+                            .clone()
+                            .stop()
+                            .start_focus(preset.focus_minutes, preset.break_minutes)
+                        {
                             c.timer = t;
-                            c.focus_started_at = Some(chrono::Utc::now());
+                            c.focus_started_at = Some(Utc::now());
                         }
                     }
                 }
             }
-            let _ = app.emit("timer-changed", ());
+            let _ = set_tray_icon_phase(app, Phase::Focus);
+            let _ = refresh_tray_menu(app, state);
+            let _ = app.emit("timer-tick", ());
         }
         _ => {}
     }
@@ -147,12 +172,15 @@ pub fn install_tray<R: Runtime>(app: &mut tauri::App<R>, state: Arc<AppState>) -
         .show_menu_on_left_click(false)
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click {
-                button: MouseButton::Right,
+                button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
                 ..
             } = event
             {
-                let _ = tray.app_handle().emit("tray-open", ());
+                if let Some(w) = tray.app_handle().get_webview_window("main") {
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
             }
         })
         .on_menu_event(move |app, event| {
