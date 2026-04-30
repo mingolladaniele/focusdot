@@ -1,10 +1,10 @@
-<p align="center"><img src="assets/punto-readme.svg" alt="Punto" width="96" height="96" /></p>
+<p align="center"><img src="assets/readme-hero.svg" alt="focusdot: brand dot and timer controls (Start, Pause, Stop)" width="320" /></p>
 
-# Punto
+# focusdot
 
 **A tray-first Pomodoro for Windows.** Start a focus block, close the window, and keep working. No browser tab to babysit, no account, no sync noise.
 
-If you live in IDEs, docs, and spreadsheets all day, Punto stays out of the way until you need it: one glance at the tray tells you **idle (white dot)**, **focus (green)**, or **break (blue)**.
+If you live in IDEs, docs, and spreadsheets all day, focusdot stays out of the way until you need it: one glance at the tray tells you **idle (white dot)**, **Focus phase (green)**, or **break (blue)**.
 
 ---
 
@@ -16,14 +16,14 @@ If you live in IDEs, docs, and spreadsheets all day, Punto stays out of the way 
 
 ---
 
-## Why Punto (instead of a web timer or heavy app)
+## Why focusdot (instead of a web timer or heavy app)
 
-| You want… | Punto |
+| You want… | focusdot |
 |-----------|--------|
 | State at a glance | Tray icon color shows phase without opening a window |
 | Fast preset starts | Right‑click tray → pick a preset or use the dashboard |
 | Motivation, not nagging | Short Windows toasts + daily stats (minutes, sessions, streak) |
-| Your data, your machine | Everything under `%AppData%\Punto\` as JSON (local only) |
+| Your data, your machine | Everything under `%AppData%\FocusDot\` as JSON (local only) |
 
 ---
 
@@ -38,8 +38,8 @@ If you live in IDEs, docs, and spreadsheets all day, Punto stays out of the way 
 
 ## Install
 
-1. Download `Punto_<version>_x64_en-US.msi` from [Releases](https://github.com/YOUR_ORG/focusdot/releases) (replace `YOUR_ORG` after you publish).
-2. Run the installer. Punto starts in the tray only; look for the circle icon.
+1. Download `focusdot_<version>_x64_en-US.msi` from [Releases](https://github.com/mingolladaniele/focusdot/releases).
+2. Run the installer. focusdot starts in the tray only; look for the circle icon.
 3. Optional: **Settings…** in the tray menu → *Launch on Windows startup*.
 
 ---
@@ -84,10 +84,21 @@ npm run test:rust        # Rust tests only
 |------|------|
 | `src/` | Vite + TypeScript dashboard |
 | `src-tauri/` | Rust: timer, tray, notifications, persistence |
-| `assets/` | Brand assets for docs (e.g. README badge) |
+| `assets/` | README graphics and source artwork for bundled icons |
 
 ---
 
 ## License
 
 MIT (add a `LICENSE` file in the repo root when you publish).
+
+---
+
+<details>
+<summary>About the README graphic</summary>
+
+The row shows **Start** (white button, green play), **Pause** (blue), and **Stop** (green), matching the dashboard control colors. The green dot is a visible badge on GitHub; in the app, the tray dot is **white** when idle, **green** in a Focus session, and **blue** on break.
+
+If you used an older build that stored data under `%AppData%\Punto\`, new installs use **`%AppData%\FocusDot\`** instead (copy JSON manually if you need to migrate).
+
+</details>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="112" viewBox="0 0 320 112" role="img" aria-label="focusdot: tray dot plus Start, Pause, and Stop controls">
+  <!-- Brand dot (idle/focus/break colors echoed in UI) -->
+  <circle cx="56" cy="56" r="40" fill="#2bb673" stroke="#f5f5f7" stroke-width="3"/>
+  <!-- Timer controls: Start (white tile, green play), Pause (blue tile), Stop (green tile) -->
+  <g transform="translate(112 16)">
+    <rect x="0" y="0" width="52" height="52" rx="10" fill="#ffffff" stroke="#d1d1d6" stroke-width="1.5"/>
+    <path transform="translate(14 11)" fill="#2bb673" d="M8 5v30l22-15z"/>
+    <rect x="62" y="0" width="52" height="52" rx="10" fill="#4a90e2"/>
+    <path transform="translate(76 14)" fill="#ffffff" d="M6 4h8v36H6zm16 0h8v36h-8z"/>
+    <rect x="124" y="0" width="52" height="52" rx="10" fill="#2bb673"/>
+    <rect x="142" y="15" width="16" height="22" rx="2" fill="#ffffff"/>
+  </g>
+</svg>

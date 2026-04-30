@@ -1,7 +1,7 @@
 use chrono::{Datelike, Local, TimeZone, Utc};
-use punto::history::{FocusSession, History};
-use punto::stats::calculate_stats;
-use punto::storage::{load_json, save_json};
+use focusdot::history::{FocusSession, History};
+use focusdot::stats::calculate_stats;
+use focusdot::storage::{load_json, save_json};
 
 #[test]
 fn saves_and_loads_history_json() {

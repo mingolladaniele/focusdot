@@ -24,11 +24,11 @@ use crate::state::AppState;
 use crate::stats::Stats;
 use crate::storage::save_json;
 use crate::timer::{Phase, TimerSnapshot};
-use crate::tray::{icon_for_phase, install_tray, refresh_tray_menu, set_tray_icon_phase};
+use crate::tray::{install_tray, refresh_tray_menu, set_tray_icon_phase, window_title_icon};
 
 fn data_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     app.path()
-        .resolve("Punto", BaseDirectory::AppData)
+        .resolve("FocusDot", BaseDirectory::AppData)
         .map_err(|e| e.to_string())
 }
 
@@ -286,7 +286,7 @@ pub fn run() {
             spawn_timer_loop(state);
 
             if let Some(win) = app.get_webview_window("main") {
-                let _ = win.set_icon(icon_for_phase(Phase::Idle));
+                let _ = win.set_icon(window_title_icon());
             }
 
             Ok(())
@@ -308,7 +308,7 @@ pub fn run() {
             autostart::set_autostart_enabled
         ])
         .build(tauri::generate_context!())
-        .expect("failed to build Punto");
+        .expect("failed to build focusdot");
 
     app.run(|handle, event| {
         if let tauri::RunEvent::WindowEvent { label, event: win_event, .. } = event {

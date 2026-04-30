@@ -1,16 +1,16 @@
 [package]
-name = "punto"
+name = "focusdot"
 version = "0.1.0"
-description = "Minimalist system tray Pomodoro timer"
-authors = ["Punto"]
+description = "Minimalist system tray Pomodoro timer (focusdot)"
+authors = ["focusdot"]
 edition = "2021"
 
 [lib]
-name = "punto"
+name = "focusdot"
 path = "src/lib.rs"
 
 [[bin]]
-name = "punto"
+name = "focusdot"
 path = "src/main.rs"
 
 [build-dependencies]

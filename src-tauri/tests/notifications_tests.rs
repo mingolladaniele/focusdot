@@ -1,5 +1,5 @@
-use punto::notifications::{break_complete_message, focus_complete_message, NotificationCopy};
-use punto::stats::Stats;
+use focusdot::notifications::{break_complete_message, focus_complete_message, NotificationCopy};
+use focusdot::stats::Stats;
 
 fn sample_stats() -> Stats {
     Stats {

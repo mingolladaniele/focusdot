@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use punto::presets::{PresetError, PresetInput, PresetStore};
+use focusdot::presets::{PresetError, PresetInput, PresetStore};
 
 #[test]
 fn creates_preset_with_trimmed_name() {

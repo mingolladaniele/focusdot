@@ -12,9 +12,9 @@ use crate::timer::Phase;
 
 const ICON_SIZE: u32 = 32;
 
-/// 32×32 RGBA disk with 1px edge feather; outside = transparent.
-fn circular_icon(fill: (u8, u8, u8)) -> Image<'static> {
-    let size = ICON_SIZE as i32;
+/// RGBA disk with 1px edge feather; outside = transparent.
+fn circular_icon_with_size(fill: (u8, u8, u8), pixel_size: u32) -> Image<'static> {
+    let size = pixel_size as i32;
     let radius = (size as f32) / 2.0 - 1.0;
     let centre = (size as f32 - 1.0) / 2.0;
     let mut buf = vec![0u8; (size * size * 4) as usize];
@@ -37,7 +37,16 @@ fn circular_icon(fill: (u8, u8, u8)) -> Image<'static> {
             buf[i + 3] = alpha as u8;
         }
     }
-    Image::new_owned(buf, ICON_SIZE, ICON_SIZE)
+    Image::new_owned(buf, pixel_size, pixel_size)
+}
+
+fn circular_icon(fill: (u8, u8, u8)) -> Image<'static> {
+    circular_icon_with_size(fill, ICON_SIZE)
+}
+
+/// Large idle dot for the window/taskbar icon (Windows scales small tray assets poorly).
+pub fn window_title_icon() -> Image<'static> {
+    circular_icon_with_size((255, 255, 255), 256)
 }
 
 pub fn icon_for_phase(phase: Phase) -> Image<'static> {
@@ -51,9 +60,9 @@ pub fn icon_for_phase(phase: Phase) -> Image<'static> {
 /// Tooltip shown when hovering the tray icon (Windows / macOS; Linux unsupported by tray-icon).
 fn tray_tooltip(phase: Phase) -> &'static str {
     match phase {
-        Phase::Idle => "Punto — Idle",
-        Phase::Focus => "Punto — Focus",
-        Phase::Break => "Punto — Break",
+        Phase::Idle => "focusdot · Idle",
+        Phase::Focus => "focusdot · Focus",
+        Phase::Break => "focusdot · Break",
     }
 }
 
@@ -119,7 +128,7 @@ pub fn build_root_menu<R: Runtime>(
     let sep = PredefinedMenuItem::separator(handle)?;
     items.push(Box::new(sep));
 
-    let quit = MenuItem::with_id(handle, "exit", "Quit Punto", true, None::<&str>)?;
+    let quit = MenuItem::with_id(handle, "exit", "Quit focusdot", true, None::<&str>)?;
     items.push(Box::new(quit));
 
     let refs: Vec<&dyn IsMenuItem<R>> = items.iter().map(|b| b.as_ref()).collect();
@@ -220,7 +229,7 @@ pub fn install_tray<R: Runtime>(app: &mut tauri::App<R>, state: Arc<AppState>) -
     let icon = icon_for_phase(phase);
 
     let state_for_menu = state.clone();
-    TrayIconBuilder::with_id("punto_tray")
+    TrayIconBuilder::with_id("focusdot_tray")
         .icon(icon)
         .tooltip(tray_tooltip(phase))
         .menu(&menu)
@@ -248,14 +257,14 @@ pub fn install_tray<R: Runtime>(app: &mut tauri::App<R>, state: Arc<AppState>) -
 
 pub fn refresh_tray_menu<R: Runtime>(app: &AppHandle<R>, state: &Arc<AppState>) -> tauri::Result<()> {
     let menu = build_root_menu(app, state)?;
-    if let Some(tray) = app.tray_by_id("punto_tray") {
+    if let Some(tray) = app.tray_by_id("focusdot_tray") {
         tray.set_menu(Some(menu))?;
     }
     Ok(())
 }
 
 pub fn set_tray_icon_phase<R: Runtime>(app: &AppHandle<R>, phase: Phase) -> tauri::Result<()> {
-    if let Some(tray) = app.tray_by_id("punto_tray") {
+    if let Some(tray) = app.tray_by_id("focusdot_tray") {
         tray.set_icon(Some(icon_for_phase(phase)))?;
         let _ = tray.set_tooltip(Some(tray_tooltip(phase)));
     }
@@ -268,8 +277,8 @@ mod tests {
 
     #[test]
     fn tray_tooltip_includes_app_name_and_phase() {
-        assert_eq!(tray_tooltip(Phase::Idle), "Punto — Idle");
-        assert_eq!(tray_tooltip(Phase::Focus), "Punto — Focus");
-        assert_eq!(tray_tooltip(Phase::Break), "Punto — Break");
+        assert_eq!(tray_tooltip(Phase::Idle), "focusdot · Idle");
+        assert_eq!(tray_tooltip(Phase::Focus), "focusdot · Focus");
+        assert_eq!(tray_tooltip(Phase::Break), "focusdot · Break");
     }
 }

@@ -1,4 +1,4 @@
-use punto::timer::{Phase, Timer, TimerError, TimerEvent, TimerSnapshot};
+use focusdot::timer::{Phase, Timer, TimerError, TimerEvent, TimerSnapshot};
 
 #[test]
 fn starts_focus_session_from_minutes() {
