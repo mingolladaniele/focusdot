@@ -204,11 +204,6 @@ fn spawn_timer_loop(state: Arc<AppState>) {
                 let app = state.app.clone();
                 drop(core);
                 let _ = notify_focus_complete(&app, &stats, bm);
-                if let Some(w) = app.get_webview_window("main") {
-                    let _ = w.unminimize();
-                    let _ = w.show();
-                    let _ = w.set_focus();
-                }
                 let _ = set_tray_icon_phase(&app, Phase::Break);
                 let _ = refresh_tray_menu(&app, &state);
                 let _ = app.emit("timer-tick", &snapshot);
