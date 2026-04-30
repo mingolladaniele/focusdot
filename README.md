@@ -7,10 +7,10 @@ Tray-first Pomodoro for Windows. Start a focus block, close the window, and keep
 ## See it in action
 
 <p align="center">
-  <iframe width="560" height="315" src="https://www.youtube.com/embed/ObeQnt2jrzQ?si=wTQ8P5kJ9X67y_G0&amp;controls=0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+  <a href="https://youtu.be/ObeQnt2jrzQ" title="Watch focusdot demo on YouTube">
+    <img src="assets/thumb.png" alt="Watch the focusdot demo on YouTube" width="560" />
+  </a>
 </p>
-
-[Watch the focusdot demo on YouTube](https://youtu.be/ObeQnt2jrzQ)
 
 ---
 
