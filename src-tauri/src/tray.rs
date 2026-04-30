@@ -48,6 +48,15 @@ pub fn icon_for_phase(phase: Phase) -> Image<'static> {
     }
 }
 
+/// Tooltip shown when hovering the tray icon (Windows / macOS; Linux unsupported by tray-icon).
+fn tray_tooltip(phase: Phase) -> &'static str {
+    match phase {
+        Phase::Idle => "Punto — Idle",
+        Phase::Focus => "Punto — Focus",
+        Phase::Break => "Punto — Break",
+    }
+}
+
 /// Build root tray menu (presets submenu + controls).
 pub fn build_root_menu<R: Runtime>(
     handle: &AppHandle<R>,
@@ -213,6 +222,7 @@ pub fn install_tray<R: Runtime>(app: &mut tauri::App<R>, state: Arc<AppState>) -
     let state_for_menu = state.clone();
     TrayIconBuilder::with_id("punto_tray")
         .icon(icon)
+        .tooltip(tray_tooltip(phase))
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_tray_icon_event(|tray, event| {
@@ -247,6 +257,19 @@ pub fn refresh_tray_menu<R: Runtime>(app: &AppHandle<R>, state: &Arc<AppState>) 
 pub fn set_tray_icon_phase<R: Runtime>(app: &AppHandle<R>, phase: Phase) -> tauri::Result<()> {
     if let Some(tray) = app.tray_by_id("punto_tray") {
         tray.set_icon(Some(icon_for_phase(phase)))?;
+        let _ = tray.set_tooltip(Some(tray_tooltip(phase)));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{tray_tooltip, Phase};
+
+    #[test]
+    fn tray_tooltip_includes_app_name_and_phase() {
+        assert_eq!(tray_tooltip(Phase::Idle), "Punto — Idle");
+        assert_eq!(tray_tooltip(Phase::Focus), "Punto — Focus");
+        assert_eq!(tray_tooltip(Phase::Break), "Punto — Break");
+    }
 }
