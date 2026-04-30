@@ -36,7 +36,7 @@ Tray-first Pomodoro for Windows. Start a focus block, close the window, and keep
 
 ## Install
 
-1. Open the [latest release](https://github.com/mingolladaniele/focusdot/releases/latest).
+1. Open **[Releases](https://github.com/mingolladaniele/focusdot/releases)** — all versions live at `https://github.com/mingolladaniele/focusdot/releases`. For the newest installer only, use **[Latest release](https://github.com/mingolladaniele/focusdot/releases/latest)**.
 2. Download **`focusdot_<version>_x64_en-US.msi`** (Windows x64).
 3. Run the MSI. focusdot starts in the tray only; look for the circle icon.
 4. Optional: **Settings** in the tray menu, then *Launch on Windows startup*.
