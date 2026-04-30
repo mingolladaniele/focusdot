@@ -19,6 +19,11 @@ pub struct TimerSnapshot {
     pub auto_start_next: bool,
 }
 
+/// Periodic `timer-tick` is only needed while a phase countdown is actively running.
+pub fn should_emit_periodic_timer_tick(snapshot: &TimerSnapshot) -> bool {
+    snapshot.phase != Phase::Idle && snapshot.running
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Timer {
     phase: Phase,

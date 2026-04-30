@@ -23,7 +23,7 @@ use crate::presets::{Preset, PresetInput};
 use crate::state::AppState;
 use crate::stats::Stats;
 use crate::storage::save_json;
-use crate::timer::{Phase, TimerSnapshot};
+use crate::timer::{should_emit_periodic_timer_tick, Phase, TimerSnapshot};
 use crate::tray::{install_tray, refresh_tray_menu, set_tray_icon_phase, window_title_icon};
 
 fn data_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
@@ -258,7 +258,9 @@ fn spawn_timer_loop(state: Arc<AppState>) {
             let _ = set_tray_icon_phase(&state.app, new_phase);
             let _ = refresh_tray_menu(&state.app, &state);
         }
-        let _ = state.app.emit("timer-tick", &snapshot);
+        if should_emit_periodic_timer_tick(&snapshot) {
+            let _ = state.app.emit("timer-tick", &snapshot);
+        }
     });
 }
 

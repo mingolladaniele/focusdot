@@ -1,4 +1,6 @@
-use focusdot::timer::{Phase, Timer, TimerError, TimerEvent, TimerSnapshot};
+use focusdot::timer::{
+    should_emit_periodic_timer_tick, Phase, Timer, TimerError, TimerEvent, TimerSnapshot,
+};
 
 #[test]
 fn starts_focus_session_from_minutes() {
@@ -115,4 +117,34 @@ fn break_completion_returns_to_idle_when_auto_cycle_disabled() {
     let timer = timer.tick(60).timer;
     let timer = timer.tick(60).timer;
     assert_eq!(timer.phase(), Phase::Idle);
+}
+
+#[test]
+fn periodic_tick_emits_only_when_not_idle_and_running() {
+    let idle = TimerSnapshot {
+        phase: Phase::Idle,
+        running: false,
+        remaining_seconds: 0,
+        focus_minutes: 0,
+        break_minutes: 0,
+        cycles_remaining: 0,
+        auto_start_next: false,
+    };
+    assert!(!should_emit_periodic_timer_tick(&idle));
+
+    let running_focus = Timer::new()
+        .start_focus(25, 5, 1, false)
+        .expect("start")
+        .snapshot();
+    assert!(should_emit_periodic_timer_tick(&running_focus));
+
+    let paused_focus = Timer::new()
+        .start_focus(25, 5, 1, false)
+        .expect("start")
+        .pause()
+        .expect("pause")
+        .snapshot();
+    assert_eq!(paused_focus.phase, Phase::Focus);
+    assert!(!paused_focus.running);
+    assert!(!should_emit_periodic_timer_tick(&paused_focus));
 }
