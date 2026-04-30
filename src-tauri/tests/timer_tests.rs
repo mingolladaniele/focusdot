@@ -1,4 +1,4 @@
-use punto::timer::{Phase, Timer, TimerEvent};
+use punto::timer::{Phase, Timer, TimerEvent, TimerSnapshot};
 
 #[test]
 fn starts_focus_session_from_minutes() {
@@ -46,4 +46,18 @@ fn stop_returns_to_idle() {
     assert_eq!(timer.phase(), Phase::Idle);
     assert_eq!(timer.remaining_seconds(), 0);
     assert!(!timer.is_running());
+}
+
+#[test]
+fn snapshot_reports_phase_running_and_remaining() {
+    let timer = Timer::new().start_focus(25, 5).expect("start");
+    let timer = timer.tick(45).timer;
+
+    let snap: TimerSnapshot = timer.snapshot();
+
+    assert_eq!(snap.phase, Phase::Focus);
+    assert!(snap.running);
+    assert_eq!(snap.remaining_seconds, 25 * 60 - 45);
+    assert_eq!(snap.focus_minutes, 25);
+    assert_eq!(snap.break_minutes, 5);
 }

@@ -9,6 +9,15 @@ pub enum Phase {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TimerSnapshot {
+    pub phase: Phase,
+    pub running: bool,
+    pub remaining_seconds: u32,
+    pub focus_minutes: u32,
+    pub break_minutes: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Timer {
     phase: Phase,
     remaining_seconds: u32,
@@ -131,6 +140,16 @@ impl Timer {
 
     pub fn is_running(&self) -> bool {
         self.running
+    }
+
+    pub fn snapshot(&self) -> TimerSnapshot {
+        TimerSnapshot {
+            phase: self.phase,
+            running: self.running,
+            remaining_seconds: self.remaining_seconds,
+            focus_minutes: self.focus_minutes,
+            break_minutes: self.break_minutes,
+        }
     }
 }
 
