@@ -202,7 +202,6 @@ async function loadPresets(): Promise<void> {
     del.addEventListener("click", async () => {
       await invoke("delete_preset", { id: p.id });
       await loadPresets();
-      await loadStats();
     });
     actions.appendChild(del);
     li.appendChild(actions);
