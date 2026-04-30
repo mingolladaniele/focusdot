@@ -118,6 +118,39 @@ describe("settings window", () => {
     expect(screen.getByTestId("brand-dot").getAttribute("data-phase")).toBe("Focus");
   });
 
+  it("updates status pill and progress rail from snapshot", () => {
+    document.body.innerHTML = `
+    <main id="app">
+      <span class="brand-dot" data-testid="brand-dot"></span>
+      <span class="status-pill" data-testid="status-pill"><span class="status-text">Idle</span></span>
+      <section class="card timer-card">
+        <p class="phase" data-testid="timer-phase">Idle</p>
+        <p class="time" data-testid="timer-display">--:--</p>
+        <div class="rail"><div class="rail-fill" style="width:0%"></div></div>
+        <button data-testid="btn-pause"></button>
+        <button data-testid="btn-resume"></button>
+        <button data-testid="btn-stop"></button>
+      </section>
+    </main>`;
+
+    applyTimerSnapshot({
+      phase: "Focus",
+      running: true,
+      remaining_seconds: 750,
+      focus_minutes: 25,
+      break_minutes: 5,
+      cycles_remaining: 0,
+      auto_start_next: false
+    });
+
+    const pill = screen.getByTestId("status-pill");
+    const rail = document.querySelector<HTMLElement>(".timer-card .rail-fill");
+    const statusText = pill.querySelector(".status-text");
+    expect(pill.getAttribute("data-phase")).toBe("Focus");
+    expect(statusText?.textContent).toBe("Focus");
+    expect(rail?.style.width).toBe("50%");
+  });
+
   it("invokes pause_timer when Pause is clicked", async () => {
     invoke.mockImplementation((cmd: string) => {
       if (cmd === "get_stats") {

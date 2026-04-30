@@ -74,6 +74,17 @@ function formatMmSs(totalSeconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+function timerProgressPercent(snapshot: TimerSnapshot): number {
+  if (snapshot.phase === "Idle") return 0;
+  const totalSeconds =
+    snapshot.phase === "Focus"
+      ? Math.max(0, snapshot.focus_minutes) * 60
+      : Math.max(0, snapshot.break_minutes) * 60;
+  if (totalSeconds <= 0) return 0;
+  const elapsed = totalSeconds - snapshot.remaining_seconds;
+  return Math.max(0, Math.min(100, (elapsed / totalSeconds) * 100));
+}
+
 export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
   const phaseEl = document.querySelector<HTMLElement>("[data-testid='timer-phase']");
   const timeEl = document.querySelector<HTMLElement>("[data-testid='timer-display']");
@@ -94,6 +105,24 @@ export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
   }
   if (dot) {
     dot.setAttribute("data-phase", snapshot.phase);
+  }
+  const statusPill = document.querySelector<HTMLElement>("[data-testid='status-pill']");
+  const statusText = statusPill?.querySelector<HTMLElement>(".status-text");
+  const railFill = document.querySelector<HTMLElement>(".timer-card .rail-fill");
+  if (statusPill) {
+    statusPill.setAttribute("data-phase", snapshot.phase);
+  }
+  if (statusText) {
+    const short: Record<TimerSnapshot["phase"], string> = {
+      Idle: "Idle",
+      Focus: "Focus",
+      Break: "Break"
+    };
+    statusText.textContent = short[snapshot.phase];
+  }
+  if (railFill) {
+    const pct = timerProgressPercent(snapshot);
+    railFill.style.width = `${pct}%`;
   }
   if (pause) pause.disabled = snapshot.phase === "Idle" || !snapshot.running;
   if (resume) resume.disabled = snapshot.phase === "Idle" || snapshot.running;
