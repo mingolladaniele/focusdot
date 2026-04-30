@@ -23,15 +23,26 @@ beforeEach(() => {
   document.body.innerHTML = `
     <main id="app">
       <header class="topbar">
-        <span class="brand-dot" data-testid="brand-dot"></span>
+        <div class="brand">
+          <span class="brand-dot" data-testid="brand-dot"></span>
+          <h1>focusdot</h1>
+        </div>
+        <span class="status-pill" data-testid="status-pill">
+          <span class="status-pulse" aria-hidden="true"></span>
+          <span class="status-text">Idle</span>
+        </span>
       </header>
       <section class="card timer-card">
-        <p class="phase" data-testid="timer-phase">Idle</p>
+        <div class="section-head">
+          <h2 id="timer-title">Current session</h2>
+          <p class="phase" data-testid="timer-phase">Idle</p>
+        </div>
         <p class="time" data-testid="timer-display">--:--</p>
+        <div class="rail" aria-hidden="true"><div class="rail-fill" style="width:0%"></div></div>
         <div class="controls">
-          <button id="btn-pause" data-testid="btn-pause">Pause</button>
-          <button id="btn-resume" data-testid="btn-resume">Resume</button>
-          <button id="btn-stop" data-testid="btn-stop">Stop</button>
+          <button type="button" id="btn-pause" data-testid="btn-pause" class="btn btn-ghost">Pause</button>
+          <button type="button" id="btn-resume" data-testid="btn-resume" class="btn btn-primary">Resume</button>
+          <button type="button" id="btn-stop" data-testid="btn-stop" class="btn btn-ghost">Stop</button>
         </div>
       </section>
       <section class="card">
@@ -46,23 +57,38 @@ beforeEach(() => {
             <input id="break-minutes" name="breakMinutes" type="number" min="1" required /></label>
           <label class="field" for="cycles"><span>Cycles</span>
             <input id="cycles" name="cycles" type="number" min="1" value="1" /></label>
-          <button class="primary" type="submit" id="preset-submit">Save preset</button>
-          <button type="button" id="preset-cancel-edit" hidden>Cancel edit</button>
+          <button class="btn btn-primary" type="submit" id="preset-submit">Save preset</button>
+          <button type="button" class="btn btn-link" id="preset-cancel-edit" hidden>Cancel edit</button>
         </form>
         <p id="preset-error" class="error" role="alert"></p>
       </section>
       <section class="card stats-card">
         <div class="stats-grid">
-          <span class="stat-value" data-testid="sessions-today">0</span>
-          <span class="stat-value" data-testid="focus-today">0m</span>
-          <span class="stat-value" data-testid="streak-days">—</span>
-          <span class="stat-value" data-testid="focus-this-week">0h 0m</span>
+          <div class="stat-tile">
+            <span class="stat-value" data-testid="sessions-today">0</span>
+            <span class="stat-label">Sessions today</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value" data-testid="focus-today">0m</span>
+            <span class="stat-label">Focus today</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value" data-testid="streak-days">—</span>
+            <span class="stat-label">Day streak</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value" data-testid="focus-this-week">0h 0m</span>
+            <span class="stat-label">This week</span>
+          </div>
         </div>
-        <button type="button" id="reset-history">Reset</button>
       </section>
       <section class="card">
-        <input type="checkbox" id="auto-start-next-focus" />
-        <input type="checkbox" id="launch-startup" />
+        <label class="toggle">
+          <input type="checkbox" id="auto-start-next-focus" />
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="launch-startup" />
+        </label>
       </section>
     </main>
   `;
