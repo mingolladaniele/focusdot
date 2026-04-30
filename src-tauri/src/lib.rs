@@ -22,7 +22,7 @@ use crate::presets::{Preset, PresetInput};
 use crate::state::AppState;
 use crate::stats::Stats;
 use crate::storage::save_json;
-use crate::timer::Phase;
+use crate::timer::{Phase, TimerSnapshot};
 use crate::tray::{install_tray, refresh_tray_menu, set_tray_icon_phase};
 
 fn data_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
@@ -82,6 +82,92 @@ fn reset_history(state: tauri::State<'_, Arc<AppState>>) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn get_timer(state: tauri::State<'_, Arc<AppState>>) -> Result<TimerSnapshot, String> {
+    let core = state.inner.lock().map_err(|e| e.to_string())?;
+    Ok(core.timer.snapshot())
+}
+
+#[tauri::command]
+fn start_preset(
+    app: AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+    id: uuid::Uuid,
+) -> Result<TimerSnapshot, String> {
+    let snapshot = {
+        let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+        let preset = core
+            .presets
+            .all()
+            .iter()
+            .find(|p| p.id == id)
+            .cloned()
+            .ok_or_else(|| "preset not found".to_string())?;
+        let timer = core
+            .timer
+            .clone()
+            .stop()
+            .start_focus(preset.focus_minutes, preset.break_minutes)
+            .map_err(|e| e.to_string())?;
+        core.timer = timer;
+        core.focus_started_at = Some(Utc::now());
+        core.timer.snapshot()
+    };
+    set_tray_icon_phase(&app, Phase::Focus).map_err(|e| e.to_string())?;
+    refresh_tray_menu(&app, &*state).map_err(|e| e.to_string())?;
+    let _ = app.emit("timer-tick", &snapshot);
+    Ok(snapshot)
+}
+
+#[tauri::command]
+fn pause_timer(
+    app: AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+) -> Result<TimerSnapshot, String> {
+    let snapshot = {
+        let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+        let timer = core.timer.clone().pause().map_err(|e| e.to_string())?;
+        core.timer = timer;
+        core.timer.snapshot()
+    };
+    refresh_tray_menu(&app, &*state).map_err(|e| e.to_string())?;
+    let _ = app.emit("timer-tick", &snapshot);
+    Ok(snapshot)
+}
+
+#[tauri::command]
+fn resume_timer(
+    app: AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+) -> Result<TimerSnapshot, String> {
+    let snapshot = {
+        let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+        let timer = core.timer.clone().resume().map_err(|e| e.to_string())?;
+        core.timer = timer;
+        core.timer.snapshot()
+    };
+    refresh_tray_menu(&app, &*state).map_err(|e| e.to_string())?;
+    let _ = app.emit("timer-tick", &snapshot);
+    Ok(snapshot)
+}
+
+#[tauri::command]
+fn stop_timer(
+    app: AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+) -> Result<TimerSnapshot, String> {
+    let snapshot = {
+        let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+        core.timer = core.timer.clone().stop();
+        core.focus_started_at = None;
+        core.timer.snapshot()
+    };
+    set_tray_icon_phase(&app, Phase::Idle).map_err(|e| e.to_string())?;
+    refresh_tray_menu(&app, &*state).map_err(|e| e.to_string())?;
+    let _ = app.emit("timer-tick", &snapshot);
+    Ok(snapshot)
+}
+
 fn spawn_timer_loop(state: Arc<AppState>) {
     thread::spawn(move || loop {
         thread::sleep(Duration::from_secs(1));
@@ -92,6 +178,7 @@ fn spawn_timer_loop(state: Arc<AppState>) {
         let old_phase = core.timer.phase();
         let tick_result = core.timer.clone().tick(1);
         core.timer = tick_result.timer;
+        let snapshot = core.timer.snapshot();
 
         if let Some(ev) = tick_result.event {
             if let Some(mins) = ev.completed_focus_minutes {
@@ -102,12 +189,18 @@ fn spawn_timer_loop(state: Arc<AppState>) {
                 });
                 let _ = save_json(&core.history_path, &core.history);
                 core.focus_started_at = None;
-                let bm = ev.timer.remaining_seconds().saturating_div(60).max(1);
+                let bm = ev
+                    .timer
+                    .snapshot()
+                    .remaining_seconds
+                    .saturating_div(60)
+                    .max(1);
                 let app = state.app.clone();
                 drop(core);
                 let _ = notify_focus_complete(&app, bm);
                 let _ = set_tray_icon_phase(&app, Phase::Break);
-                let _ = app.emit("timer-changed", ());
+                let _ = refresh_tray_menu(&app, &state);
+                let _ = app.emit("timer-tick", &snapshot);
                 continue;
             }
         }
@@ -117,7 +210,8 @@ fn spawn_timer_loop(state: Arc<AppState>) {
             drop(core);
             let _ = notify_break_complete(&app);
             let _ = set_tray_icon_phase(&app, Phase::Idle);
-            let _ = app.emit("timer-changed", ());
+            let _ = refresh_tray_menu(&app, &state);
+            let _ = app.emit("timer-tick", &snapshot);
             continue;
         }
 
@@ -125,8 +219,9 @@ fn spawn_timer_loop(state: Arc<AppState>) {
         drop(core);
         if new_phase != old_phase {
             let _ = set_tray_icon_phase(&state.app, new_phase);
-            let _ = state.app.emit("timer-changed", ());
+            let _ = refresh_tray_menu(&state.app, &state);
         }
+        let _ = state.app.emit("timer-tick", &snapshot);
     });
 }
 
@@ -155,6 +250,11 @@ pub fn run() {
             delete_preset,
             get_stats,
             reset_history,
+            get_timer,
+            start_preset,
+            pause_timer,
+            resume_timer,
+            stop_timer,
             autostart::is_autostart_enabled,
             autostart::set_autostart_enabled
         ])

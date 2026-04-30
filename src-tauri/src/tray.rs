@@ -110,7 +110,11 @@ pub fn handle_menu_event<R: Runtime>(
                 }
             }
             let _ = refresh_tray_menu(app, state);
-            let _ = app.emit("timer-tick", ());
+            if let Ok(c) = state.inner.lock() {
+                let snap = c.timer.snapshot();
+                drop(c);
+                let _ = app.emit("timer-tick", &snap);
+            }
         }
         "resume" => {
             if let Ok(mut c) = state.inner.lock() {
@@ -119,7 +123,11 @@ pub fn handle_menu_event<R: Runtime>(
                 }
             }
             let _ = refresh_tray_menu(app, state);
-            let _ = app.emit("timer-tick", ());
+            if let Ok(c) = state.inner.lock() {
+                let snap = c.timer.snapshot();
+                drop(c);
+                let _ = app.emit("timer-tick", &snap);
+            }
         }
         "stop" => {
             if let Ok(mut c) = state.inner.lock() {
@@ -128,7 +136,11 @@ pub fn handle_menu_event<R: Runtime>(
             }
             let _ = set_tray_icon_phase(app, Phase::Idle);
             let _ = refresh_tray_menu(app, state);
-            let _ = app.emit("timer-tick", ());
+            if let Ok(c) = state.inner.lock() {
+                let snap = c.timer.snapshot();
+                drop(c);
+                let _ = app.emit("timer-tick", &snap);
+            }
         }
         s if s.starts_with("preset:") => {
             let rest = s.trim_start_matches("preset:");
@@ -149,7 +161,11 @@ pub fn handle_menu_event<R: Runtime>(
             }
             let _ = set_tray_icon_phase(app, Phase::Focus);
             let _ = refresh_tray_menu(app, state);
-            let _ = app.emit("timer-tick", ());
+            if let Ok(c) = state.inner.lock() {
+                let snap = c.timer.snapshot();
+                drop(c);
+                let _ = app.emit("timer-tick", &snap);
+            }
         }
         _ => {}
     }
