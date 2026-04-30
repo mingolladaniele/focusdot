@@ -11,8 +11,10 @@ export type PresetRow = {
 };
 
 type StatsResponse = {
-  sessions_today: number;
-  focus_minutes_this_week: number;
+  sessionsToday: number;
+  focusMinutesToday: number;
+  focusMinutesThisWeek: number;
+  currentStreakDays: number;
 };
 
 export type TimerSnapshot = {
@@ -86,8 +88,8 @@ async function loadStats(): Promise<void> {
   const stats = await invoke<StatsResponse>("get_stats");
   const sessionsToday = document.querySelector<HTMLElement>("[data-testid='sessions-today']");
   const focusThisWeek = document.querySelector<HTMLElement>("[data-testid='focus-this-week']");
-  if (sessionsToday) sessionsToday.textContent = formatSessionsToday(stats.sessions_today);
-  if (focusThisWeek) focusThisWeek.textContent = formatFocusMinutes(stats.focus_minutes_this_week);
+  if (sessionsToday) sessionsToday.textContent = formatSessionsToday(stats.sessionsToday);
+  if (focusThisWeek) focusThisWeek.textContent = formatFocusMinutes(stats.focusMinutesThisWeek);
 }
 
 async function loadPresets(): Promise<void> {

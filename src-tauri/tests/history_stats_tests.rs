@@ -55,3 +55,71 @@ fn calculates_today_sessions_and_week_minutes() {
     assert_eq!(stats.sessions_today, 1);
     assert_eq!(stats.focus_minutes_this_week, 80);
 }
+
+#[test]
+fn calculates_focus_minutes_today() {
+    use chrono::TimeZone;
+    let now = Utc.with_ymd_and_hms(2026, 4, 30, 12, 0, 0).unwrap();
+    let history = History {
+        sessions: vec![
+            FocusSession {
+                started_at: now,
+                duration_minutes: 25,
+            },
+            FocusSession {
+                started_at: now - chrono::Duration::hours(2),
+                duration_minutes: 50,
+            },
+            FocusSession {
+                started_at: now - chrono::Duration::days(1),
+                duration_minutes: 25,
+            },
+        ],
+    };
+    let stats = calculate_stats(&history, now);
+    assert_eq!(stats.focus_minutes_today, 75);
+    assert_eq!(stats.sessions_today, 2);
+}
+
+#[test]
+fn calculates_streak_days() {
+    use chrono::TimeZone;
+    let now = Utc.with_ymd_and_hms(2026, 4, 30, 12, 0, 0).unwrap();
+    let history = History {
+        sessions: vec![
+            FocusSession {
+                started_at: now,
+                duration_minutes: 25,
+            },
+            FocusSession {
+                started_at: now - chrono::Duration::days(1),
+                duration_minutes: 25,
+            },
+            FocusSession {
+                started_at: now - chrono::Duration::days(2),
+                duration_minutes: 25,
+            },
+            // Gap: no session 3 days ago.
+            FocusSession {
+                started_at: now - chrono::Duration::days(4),
+                duration_minutes: 25,
+            },
+        ],
+    };
+    let stats = calculate_stats(&history, now);
+    assert_eq!(stats.current_streak_days, 3);
+}
+
+#[test]
+fn streak_is_zero_when_no_session_today() {
+    use chrono::TimeZone;
+    let now = Utc.with_ymd_and_hms(2026, 4, 30, 12, 0, 0).unwrap();
+    let history = History {
+        sessions: vec![FocusSession {
+            started_at: now - chrono::Duration::days(1),
+            duration_minutes: 25,
+        }],
+    };
+    let stats = calculate_stats(&history, now);
+    assert_eq!(stats.current_streak_days, 0);
+}

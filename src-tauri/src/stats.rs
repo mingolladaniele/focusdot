@@ -1,12 +1,17 @@
-use chrono::{DateTime, Datelike, Utc};
+use std::collections::HashSet;
+
+use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::history::History;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Stats {
     pub sessions_today: usize,
+    pub focus_minutes_today: u32,
     pub focus_minutes_this_week: u32,
+    pub current_streak_days: u32,
 }
 
 pub fn calculate_stats(history: &History, now: DateTime<Utc>) -> Stats {
@@ -19,6 +24,13 @@ pub fn calculate_stats(history: &History, now: DateTime<Utc>) -> Stats {
         .filter(|session| session.started_at.date_naive() == today)
         .count();
 
+    let focus_minutes_today = history
+        .sessions
+        .iter()
+        .filter(|session| session.started_at.date_naive() == today)
+        .map(|session| session.duration_minutes)
+        .sum();
+
     let focus_minutes_this_week = history
         .sessions
         .iter()
@@ -26,8 +38,25 @@ pub fn calculate_stats(history: &History, now: DateTime<Utc>) -> Stats {
         .map(|session| session.duration_minutes)
         .sum();
 
+    let session_dates: HashSet<NaiveDate> = history
+        .sessions
+        .iter()
+        .map(|session| session.started_at.date_naive())
+        .collect();
+    let mut current_streak_days = 0u32;
+    let mut cursor = today;
+    while session_dates.contains(&cursor) {
+        current_streak_days += 1;
+        cursor = match cursor.checked_sub_signed(Duration::days(1)) {
+            Some(date) => date,
+            None => break,
+        };
+    }
+
     Stats {
         sessions_today,
+        focus_minutes_today,
         focus_minutes_this_week,
+        current_streak_days,
     }
 }

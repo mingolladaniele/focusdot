@@ -77,7 +77,14 @@ describe("settings window", () => {
 
   it("invokes pause_timer when Pause is clicked", async () => {
     invoke.mockImplementation((cmd: string) => {
-      if (cmd === "get_stats") return Promise.resolve({ sessions_today: 0, focus_minutes_this_week: 0 });
+      if (cmd === "get_stats") {
+        return Promise.resolve({
+          sessionsToday: 0,
+          focusMinutesToday: 0,
+          focusMinutesThisWeek: 0,
+          currentStreakDays: 0
+        });
+      }
       if (cmd === "list_presets") return Promise.resolve([]);
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
       if (cmd === "get_timer") {
@@ -101,7 +108,12 @@ describe("settings window", () => {
   it("loads stats on bootstrap", async () => {
     invoke.mockImplementation((cmd: string) => {
       if (cmd === "get_stats") {
-        return Promise.resolve({ sessions_today: 2, focus_minutes_this_week: 80 });
+        return Promise.resolve({
+          sessionsToday: 2,
+          focusMinutesToday: 50,
+          focusMinutesThisWeek: 80,
+          currentStreakDays: 3
+        });
       }
       if (cmd === "list_presets") return Promise.resolve([]);
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
@@ -126,7 +138,14 @@ describe("settings window", () => {
 
   it("saves valid preset through Tauri command", async () => {
     invoke.mockImplementation((cmd: string) => {
-      if (cmd === "get_stats") return Promise.resolve({ sessions_today: 0, focus_minutes_this_week: 0 });
+      if (cmd === "get_stats") {
+        return Promise.resolve({
+          sessionsToday: 0,
+          focusMinutesToday: 0,
+          focusMinutesThisWeek: 0,
+          currentStreakDays: 0
+        });
+      }
       if (cmd === "list_presets") return Promise.resolve([]);
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
       if (cmd === "get_timer") {
