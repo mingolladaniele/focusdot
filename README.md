@@ -4,6 +4,12 @@
 
 Tray-first Pomodoro for Windows. Start a focus block, close the window, and keep working. No browser tab to babysit, no account, no sync.
 
+## See it in action
+
+<p align="center">
+  <iframe width="560" height="315" src="https://www.youtube.com/embed/ObeQnt2jrzQ" title="focusdot demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+</p>
+
 ---
 
 ## Who it’s for
