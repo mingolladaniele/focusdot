@@ -1,10 +1,12 @@
-<p align="center"><img src="assets/readme-hero.svg" alt="focusdot: brand dot and timer controls (Start, Pause, Stop)" width="320" /></p>
+<p align="center"><img src="assets/readme-hero.svg" alt="focusdot: idle (white), Focus (green), break (blue)" width="264" /></p>
 
 # focusdot
 
+**Repository:** [github.com/mingolladaniele/focusdot](https://github.com/mingolladaniele/focusdot)
+
 **A tray-first Pomodoro for Windows.** Start a focus block, close the window, and keep working. No browser tab to babysit, no account, no sync noise.
 
-If you live in IDEs, docs, and spreadsheets all day, focusdot stays out of the way until you need it: one glance at the tray tells you **idle (white dot)**, **Focus phase (green)**, or **break (blue)**.
+The logo above is the tray dot in three phases: **idle (white)**, **Focus (green)**, **break (blue)**.
 
 ---
 
@@ -36,11 +38,16 @@ If you live in IDEs, docs, and spreadsheets all day, focusdot stays out of the w
 
 ---
 
-## Install
+## Releases
 
-1. Download `focusdot_<version>_x64_en-US.msi` from [Releases](https://github.com/mingolladaniele/focusdot/releases).
-2. Run the installer. focusdot starts in the tray only; look for the circle icon.
-3. Optional: **Settings…** in the tray menu → *Launch on Windows startup*.
+Installers are published on **[GitHub Releases](https://github.com/mingolladaniele/focusdot/releases)**.
+
+1. Open the [latest release](https://github.com/mingolladaniele/focusdot/releases/latest).
+2. Download **`focusdot_<version>_x64_en-US.msi`** (Windows x64).
+3. Run the MSI. focusdot starts in the tray only; look for the circle icon.
+4. Optional: **Settings…** in the tray menu → *Launch on Windows startup*.
+
+Source code for each release is tagged on the same page.
 
 ---
 
@@ -90,15 +97,13 @@ npm run test:rust        # Rust tests only
 
 ## License
 
-MIT (add a `LICENSE` file in the repo root when you publish).
+**MIT.** See [`LICENSE`](LICENSE) for the full text.
 
 ---
 
 <details>
-<summary>About the README graphic</summary>
+<summary>Migrating old data</summary>
 
-The row shows **Start** (white button, green play), **Pause** (blue), and **Stop** (green), matching the dashboard control colors. The green dot is a visible badge on GitHub; in the app, the tray dot is **white** when idle, **green** in a Focus session, and **blue** on break.
-
-If you used an older build that stored data under `%AppData%\Punto\`, new installs use **`%AppData%\FocusDot\`** instead (copy JSON manually if you need to migrate).
+If you used an older build that stored data under `%AppData%\Punto\`, current installs use **`%AppData%\FocusDot\`**. Copy your `history.json` / `presets.json` / `settings.json` manually if you need to migrate.
 
 </details>
