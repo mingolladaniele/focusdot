@@ -4,58 +4,62 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Punto</title>
-    <style>
-      body {
-        font-family: system-ui, sans-serif;
-        margin: 1rem;
-        color: #111;
-      }
-      section {
-        margin-bottom: 1.5rem;
-      }
-      ul {
-        padding-left: 1.2rem;
-      }
-      button {
-        margin-right: 0.5rem;
-      }
-    </style>
+    <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
     <main id="app">
-      <h1>Punto</h1>
-      <section aria-labelledby="stats-title">
-        <h2 id="stats-title">Statistics</h2>
-        <p data-testid="sessions-today">0 sessions today</p>
-        <p data-testid="focus-this-week">0h 0m this week</p>
-        <button type="button" id="reset-history">Reset statistics</button>
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-dot" data-testid="brand-dot"></span>
+          <h1>Punto</h1>
+        </div>
+      </header>
+
+      <section class="card timer-card" aria-labelledby="timer-title">
+        <h2 id="timer-title">Current session</h2>
+        <p class="phase" data-testid="timer-phase">Idle</p>
+        <p class="time" data-testid="timer-display">--:--</p>
+        <div class="controls">
+          <button type="button" id="btn-pause" data-testid="btn-pause" title="Suspend the countdown without losing remaining time">Pause</button>
+          <button type="button" id="btn-resume" data-testid="btn-resume" title="Continue from where Pause left off">Resume</button>
+          <button type="button" id="btn-stop" data-testid="btn-stop" title="Cancel the current session and go back to Idle">Stop</button>
+        </div>
       </section>
-      <section aria-labelledby="startup-title">
+
+      <section class="card" aria-labelledby="presets-title">
+        <h2 id="presets-title">Presets</h2>
+        <ul id="preset-list" class="preset-list" data-testid="preset-list"></ul>
+        <form id="preset-form" class="preset-form">
+          <label class="field" for="preset-name">
+            <span>Name</span>
+            <input id="preset-name" name="name" placeholder="Deep work" required />
+          </label>
+          <label class="field" for="focus-minutes">
+            <span>Focus minutes</span>
+            <input id="focus-minutes" name="focusMinutes" type="number" min="1" placeholder="25" required />
+          </label>
+          <label class="field" for="break-minutes">
+            <span>Break minutes</span>
+            <input id="break-minutes" name="breakMinutes" type="number" min="1" placeholder="5" required />
+          </label>
+          <button class="primary" type="submit">Save preset</button>
+        </form>
+        <p id="preset-error" class="error" role="alert"></p>
+      </section>
+
+      <section class="card" aria-labelledby="stats-title">
+        <h2 id="stats-title">Statistics</h2>
+        <p class="stat" data-testid="sessions-today">0 sessions today</p>
+        <p class="stat" data-testid="focus-this-week">0h 0m this week</p>
+        <button type="button" class="ghost" id="reset-history">Reset statistics</button>
+      </section>
+
+      <section class="card" aria-labelledby="startup-title">
         <h2 id="startup-title">Startup</h2>
-        <label>
+        <label class="toggle">
           <input type="checkbox" id="launch-startup" />
           Launch on Windows startup
         </label>
-      </section>
-      <section aria-labelledby="presets-title">
-        <h2 id="presets-title">Presets</h2>
-        <ul id="preset-list" data-testid="preset-list"></ul>
-        <form id="preset-form">
-          <label>
-            Name
-            <input id="preset-name" name="name" required />
-          </label>
-          <label>
-            Focus minutes
-            <input id="focus-minutes" name="focusMinutes" type="number" min="1" required />
-          </label>
-          <label>
-            Break minutes
-            <input id="break-minutes" name="breakMinutes" type="number" min="1" required />
-          </label>
-          <button type="submit">Save preset</button>
-        </form>
-        <p id="preset-error" role="alert"></p>
       </section>
     </main>
     <script type="module">
