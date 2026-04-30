@@ -221,6 +221,9 @@ fn spawn_timer_loop(state: Arc<AppState>) {
         }
 
         let new_phase = core.timer.phase();
+        if old_phase == Phase::Break && new_phase == Phase::Focus {
+            core.focus_started_at = Some(Utc::now());
+        }
         drop(core);
         if new_phase != old_phase {
             let _ = set_tray_icon_phase(&state.app, new_phase);

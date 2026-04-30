@@ -1,4 +1,4 @@
-use punto::timer::{Phase, Timer, TimerEvent, TimerSnapshot};
+use punto::timer::{Phase, Timer, TimerError, TimerEvent, TimerSnapshot};
 
 #[test]
 fn starts_focus_session_from_minutes() {
@@ -9,6 +9,15 @@ fn starts_focus_session_from_minutes() {
     assert_eq!(timer.phase(), Phase::Focus);
     assert_eq!(timer.remaining_seconds(), 25 * 60);
     assert!(timer.is_running());
+}
+
+#[test]
+fn rejects_zero_cycles() {
+    let err = Timer::new()
+        .start_focus(25, 5, 0, false)
+        .expect_err("zero cycles are invalid");
+
+    assert_eq!(err, TimerError::InvalidMinutes);
 }
 
 #[test]
