@@ -62,7 +62,11 @@ beforeEach(() => {
         </form>
         <p id="preset-error" class="error" role="alert"></p>
       </section>
-      <section class="card stats-card">
+      <section class="card stats-card" aria-labelledby="stats-title">
+        <div class="section-head">
+          <h2 id="stats-title">Statistics</h2>
+          <button type="button" id="reset-history" class="btn-link-danger">Reset</button>
+        </div>
         <div class="stats-grid">
           <div class="stat-tile">
             <span class="stat-value" data-testid="sessions-today">0</span>
@@ -82,13 +86,32 @@ beforeEach(() => {
           </div>
         </div>
       </section>
-      <section class="card">
-        <label class="toggle">
-          <input type="checkbox" id="auto-start-next-focus" />
-        </label>
-        <label class="toggle">
-          <input type="checkbox" id="launch-startup" />
-        </label>
+      <section class="card" aria-labelledby="startup-title">
+        <div class="section-head">
+          <h2 id="startup-title">App</h2>
+        </div>
+        <div class="toggle-list">
+          <label class="toggle">
+            <span class="toggle-text">
+              <span class="toggle-label">Auto-start next focus after break</span>
+              <span class="toggle-hint">Skip the manual nudge between cycles.</span>
+            </span>
+            <span class="switch">
+              <input type="checkbox" id="auto-start-next-focus" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+          <label class="toggle">
+            <span class="toggle-text">
+              <span class="toggle-label">Launch on Windows startup</span>
+              <span class="toggle-hint">Open focusdot when you sign in.</span>
+            </span>
+            <span class="switch">
+              <input type="checkbox" id="launch-startup" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+        </div>
       </section>
     </main>
   `;
