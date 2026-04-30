@@ -191,7 +191,7 @@ describe("settings window", () => {
     expect(invoke).toHaveBeenCalledWith("get_stats");
   });
 
-  it("refreshes stats when timer-tick fires", async () => {
+  it("does not refresh stats on arbitrary timer-tick (same phase)", async () => {
     let tickCb: ((e: { payload: unknown }) => void | Promise<void>) | undefined;
     listen.mockImplementation((event: string, cb: typeof tickCb) => {
       if (event === "timer-tick") tickCb = cb;
@@ -229,8 +229,7 @@ describe("settings window", () => {
     });
 
     await bootstrap();
-    const initialCalls = statsCalls;
-    expect(initialCalls).toBeGreaterThanOrEqual(1);
+    const afterBootstrap = statsCalls;
 
     await tickCb?.({
       payload: {
@@ -244,9 +243,64 @@ describe("settings window", () => {
       }
     });
 
-    expect(statsCalls).toBeGreaterThan(initialCalls);
-    expect(screen.getByTestId("sessions-today").textContent).toBe("1");
-    expect(screen.getByTestId("focus-today").textContent).toBe("25m");
+    expect(statsCalls).toBe(afterBootstrap);
+  });
+
+  it("refreshes stats when timer-tick shows focus completed (Focus → Break)", async () => {
+    let tickCb: ((e: { payload: unknown }) => void | Promise<void>) | undefined;
+    listen.mockImplementation((event: string, cb: typeof tickCb) => {
+      if (event === "timer-tick") tickCb = cb;
+      return Promise.resolve(() => {});
+    });
+
+    let statsCalls = 0;
+    invoke.mockImplementation((cmd: string) => {
+      if (cmd === "get_stats") {
+        statsCalls += 1;
+        return Promise.resolve({
+          sessionsToday: 2,
+          focusMinutesToday: 50,
+          focusMinutesThisWeek: 50,
+          currentStreakDays: 2
+        });
+      }
+      if (cmd === "list_presets") return Promise.resolve([]);
+      if (cmd === "get_app_settings") {
+        return Promise.resolve({ autoStartNextFocusAfterBreak: false });
+      }
+      if (cmd === "is_autostart_enabled") return Promise.resolve(false);
+      if (cmd === "get_timer") {
+        return Promise.resolve({
+          phase: "Focus",
+          running: true,
+          remaining_seconds: 1,
+          focus_minutes: 25,
+          break_minutes: 5,
+          cycles_remaining: 0,
+          auto_start_next: false
+        });
+      }
+      return Promise.resolve(undefined);
+    });
+
+    await bootstrap();
+    const afterBootstrap = statsCalls;
+
+    await tickCb?.({
+      payload: {
+        phase: "Break",
+        running: true,
+        remaining_seconds: 300,
+        focus_minutes: 25,
+        break_minutes: 5,
+        cycles_remaining: 0,
+        auto_start_next: false
+      }
+    });
+
+    expect(statsCalls).toBeGreaterThan(afterBootstrap);
+    expect(screen.getByTestId("sessions-today").textContent).toBe("2");
+    expect(screen.getByTestId("focus-today").textContent).toBe("50m");
   });
 
   it("saves valid preset through Tauri command", async () => {

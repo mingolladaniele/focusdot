@@ -117,16 +117,24 @@ export async function bootstrap(): Promise<void> {
   await bindAutostart();
   bindTimerControls();
 
+  let lastPhase: TimerSnapshot["phase"] | undefined;
   try {
     const snap = await invoke<TimerSnapshot>("get_timer");
     applyTimerSnapshot(snap);
+    lastPhase = snap.phase;
   } catch {
-    /* ignore: snapshot will arrive via event */
+    lastPhase = undefined;
   }
 
   await listen<TimerSnapshot>("timer-tick", async (e) => {
-    if (e.payload) applyTimerSnapshot(e.payload);
-    await loadStats();
+    const payload = e.payload;
+    if (!payload) return;
+    const prev = lastPhase;
+    lastPhase = payload.phase;
+    applyTimerSnapshot(payload);
+    if (shouldRefreshStatsAfterTick(prev, payload)) {
+      await loadStats();
+    }
   });
 }
 
