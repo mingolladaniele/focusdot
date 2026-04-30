@@ -29,18 +29,10 @@ beforeEach(() => {
           <button id="btn-stop" data-testid="btn-stop">Stop</button>
         </div>
       </section>
-      <section class="card" aria-labelledby="stats-title">
-        <h2 id="stats-title">Statistics</h2>
-        <p class="stat" data-testid="sessions-today">0 sessions today</p>
-        <p class="stat" data-testid="focus-today">0m today</p>
-        <p class="stat" data-testid="streak-days">No streak yet</p>
-        <p class="stat" data-testid="focus-this-week">0h 0m this week</p>
-        <button type="button" class="ghost" id="reset-history">Reset statistics</button>
-      </section>
-      <section class="card" aria-labelledby="presets-title">
-        <h2 id="presets-title">Presets</h2>
+      <section class="card">
         <ul id="preset-list" data-testid="preset-list"></ul>
-        <form id="preset-form" class="preset-form">
+        <form id="preset-form">
+          <input type="hidden" id="preset-id" name="presetId" value="" />
           <label class="field" for="preset-name"><span>Name</span>
             <input id="preset-name" name="name" required /></label>
           <label class="field" for="focus-minutes"><span>Focus minutes</span>
@@ -49,16 +41,23 @@ beforeEach(() => {
             <input id="break-minutes" name="breakMinutes" type="number" min="1" required /></label>
           <label class="field" for="cycles"><span>Cycles</span>
             <input id="cycles" name="cycles" type="number" min="1" value="1" /></label>
-          <label class="toggle field" for="auto-start-next">
-            <input type="checkbox" id="auto-start-next" name="autoStartNext" />
-            Auto-start next focus after break</label>
-          <button class="primary" type="submit">Save preset</button>
+          <button class="primary" type="submit" id="preset-submit">Save preset</button>
+          <button type="button" id="preset-cancel-edit" hidden>Cancel edit</button>
         </form>
         <p id="preset-error" class="error" role="alert"></p>
       </section>
-      <section class="card" aria-labelledby="startup-title">
-        <h2 id="startup-title">Startup</h2>
-        <label class="toggle"><input type="checkbox" id="launch-startup" /> Launch on Windows startup</label>
+      <section class="card stats-card">
+        <div class="stats-grid">
+          <span class="stat-value" data-testid="sessions-today">0</span>
+          <span class="stat-value" data-testid="focus-today">0m</span>
+          <span class="stat-value" data-testid="streak-days">—</span>
+          <span class="stat-value" data-testid="focus-this-week">0h 0m</span>
+        </div>
+        <button type="button" id="reset-history">Reset</button>
+      </section>
+      <section class="card">
+        <input type="checkbox" id="auto-start-next-focus" />
+        <input type="checkbox" id="launch-startup" />
       </section>
     </main>
   `;
@@ -95,6 +94,9 @@ describe("settings window", () => {
         });
       }
       if (cmd === "list_presets") return Promise.resolve([]);
+      if (cmd === "get_app_settings") {
+        return Promise.resolve({ autoStartNextFocusAfterBreak: false });
+      }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
       if (cmd === "get_timer") {
         return Promise.resolve({
@@ -127,6 +129,9 @@ describe("settings window", () => {
         });
       }
       if (cmd === "list_presets") return Promise.resolve([]);
+      if (cmd === "get_app_settings") {
+        return Promise.resolve({ autoStartNextFocusAfterBreak: false });
+      }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
       if (cmd === "get_timer") {
         return Promise.resolve({
@@ -144,10 +149,10 @@ describe("settings window", () => {
 
     await bootstrap();
 
-    expect(screen.getByTestId("sessions-today").textContent).toBe("2 sessions today");
-    expect(screen.getByTestId("focus-today").textContent).toBe("50m today");
-    expect(screen.getByTestId("streak-days").textContent).toBe("3 day streak");
-    expect(screen.getByTestId("focus-this-week").textContent).toBe("1h 20m this week");
+    expect(screen.getByTestId("sessions-today").textContent).toBe("2");
+    expect(screen.getByTestId("focus-today").textContent).toBe("50m");
+    expect(screen.getByTestId("streak-days").textContent).toBe("3");
+    expect(screen.getByTestId("focus-this-week").textContent).toBe("1h 20m");
     expect(invoke).toHaveBeenCalledWith("get_stats");
   });
 
@@ -162,6 +167,9 @@ describe("settings window", () => {
         });
       }
       if (cmd === "list_presets") return Promise.resolve([]);
+      if (cmd === "get_app_settings") {
+        return Promise.resolve({ autoStartNextFocusAfterBreak: false });
+      }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
       if (cmd === "get_timer") {
         return Promise.resolve({
@@ -188,8 +196,7 @@ describe("settings window", () => {
         name: "Focus",
         focusMinutes: 25,
         breakMinutes: 5,
-        cycles: 1,
-        autoStartNext: false
+        cycles: 1
       }
     });
   });

@@ -138,7 +138,6 @@ button.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
-  grid-column: 1 / -1;
 }
 
 button.ghost {
@@ -212,8 +211,16 @@ button.ghost {
   font-size: 0.95rem;
 }
 
-.field:nth-of-type(1) {
+.preset-form > label.field:first-of-type {
   grid-column: 1 / -1;
+}
+
+.preset-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .error {
@@ -223,9 +230,45 @@ button.ghost {
   min-height: 1rem;
 }
 
-.stat {
-  margin: 0.15rem 0;
-  font-size: 0.95rem;
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.stat-tile {
+  padding: 0.65rem 0.75rem;
+  background: var(--bg);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.stat-value {
+  font-size: 1.35rem;
+  font-weight: 600;
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+button.danger:hover {
+  filter: brightness(1.08);
 }
 
 .toggle {

@@ -2,10 +2,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { parsePresetForm } from "./presets";
 import {
-  formatFocusMinutes,
-  formatFocusMinutesToday,
-  formatSessionsToday,
-  formatStreakDays
+  statFocusTodayValue,
+  statSessionsTodayValue,
+  statStreakValue,
+  statWeekValue
 } from "./stats";
 
 export type PresetRow = {
@@ -14,7 +14,6 @@ export type PresetRow = {
   focusMinutes: number;
   breakMinutes: number;
   cycles: number;
-  autoStartNext: boolean;
 };
 
 type StatsResponse = {
@@ -22,6 +21,10 @@ type StatsResponse = {
   focusMinutesToday: number;
   focusMinutesThisWeek: number;
   currentStreakDays: number;
+};
+
+type AppSettingsDto = {
+  autoStartNextFocusAfterBreak: boolean;
 };
 
 export type TimerSnapshot = {
@@ -72,12 +75,20 @@ export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
   if (stop) stop.disabled = snapshot.phase === "Idle";
 }
 
+function setPresetEditingMode(editing: boolean): void {
+  const submit = document.querySelector<HTMLButtonElement>("#preset-submit");
+  const cancel = document.querySelector<HTMLButtonElement>("#preset-cancel-edit");
+  if (submit) submit.textContent = editing ? "Update preset" : "Save preset";
+  if (cancel) cancel.hidden = !editing;
+}
+
 export async function bootstrap(): Promise<void> {
   document.body.dataset.ready = "true";
   await loadStats();
   await loadPresets();
   bindPresetForm();
   bindResetHistory();
+  await bindAppSettings();
   await bindAutostart();
   bindTimerControls();
 
@@ -99,10 +110,10 @@ async function loadStats(): Promise<void> {
   const focusThisWeek = document.querySelector<HTMLElement>("[data-testid='focus-this-week']");
   const focusToday = document.querySelector<HTMLElement>("[data-testid='focus-today']");
   const streak = document.querySelector<HTMLElement>("[data-testid='streak-days']");
-  if (sessionsToday) sessionsToday.textContent = formatSessionsToday(stats.sessionsToday);
-  if (focusThisWeek) focusThisWeek.textContent = formatFocusMinutes(stats.focusMinutesThisWeek);
-  if (focusToday) focusToday.textContent = formatFocusMinutesToday(stats.focusMinutesToday);
-  if (streak) streak.textContent = formatStreakDays(stats.currentStreakDays);
+  if (sessionsToday) sessionsToday.textContent = statSessionsTodayValue(stats.sessionsToday);
+  if (focusThisWeek) focusThisWeek.textContent = statWeekValue(stats.focusMinutesThisWeek);
+  if (focusToday) focusToday.textContent = statFocusTodayValue(stats.focusMinutesToday);
+  if (streak) streak.textContent = statStreakValue(stats.currentStreakDays);
 }
 
 async function loadPresets(): Promise<void> {
@@ -118,8 +129,7 @@ async function loadPresets(): Promise<void> {
     const name = document.createElement("strong");
     name.textContent = p.name;
     const detail = document.createElement("small");
-    const cyclesPart =
-      p.cycles > 1 ? ` · ${p.cycles}× ${p.autoStartNext ? "auto" : "manual"}` : "";
+    const cyclesPart = p.cycles > 1 ? ` · ${p.cycles} cycles` : "";
     detail.textContent = `${p.focusMinutes}m focus · ${p.breakMinutes}m break${cyclesPart}`;
     meta.appendChild(name);
     meta.appendChild(detail);
@@ -127,6 +137,27 @@ async function loadPresets(): Promise<void> {
 
     const actions = document.createElement("div");
     actions.className = "preset-actions";
+
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "ghost";
+    edit.textContent = "Edit";
+    edit.addEventListener("click", () => {
+      const hid = document.querySelector<HTMLInputElement>("#preset-id");
+      const nameIn = document.querySelector<HTMLInputElement>("#preset-name");
+      const fm = document.querySelector<HTMLInputElement>("#focus-minutes");
+      const bm = document.querySelector<HTMLInputElement>("#break-minutes");
+      const cy = document.querySelector<HTMLInputElement>("#cycles");
+      if (hid) hid.value = p.id;
+      if (nameIn) nameIn.value = p.name;
+      if (fm) fm.value = String(p.focusMinutes);
+      if (bm) bm.value = String(p.breakMinutes);
+      if (cy) cy.value = String(p.cycles);
+      setPresetEditingMode(true);
+      nameIn?.focus();
+    });
+    actions.appendChild(edit);
+
     const start = document.createElement("button");
     start.type = "button";
     start.textContent = "Start";
@@ -154,7 +185,16 @@ async function loadPresets(): Promise<void> {
 function bindPresetForm(): void {
   const form = document.querySelector<HTMLFormElement>("#preset-form");
   const error = document.querySelector<HTMLElement>("#preset-error");
+  const cancel = document.querySelector<HTMLButtonElement>("#preset-cancel-edit");
   if (!form) return;
+
+  cancel?.addEventListener("click", () => {
+    form.reset();
+    const hid = document.querySelector<HTMLInputElement>("#preset-id");
+    if (hid) hid.value = "";
+    setPresetEditingMode(false);
+    if (error) error.textContent = "";
+  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -163,8 +203,19 @@ function bindPresetForm(): void {
       if (error) error.textContent = parsed.error;
       return;
     }
-    await invoke("save_preset", { input: parsed.value });
+    const input: Record<string, unknown> = {
+      name: parsed.value.name,
+      focusMinutes: parsed.value.focusMinutes,
+      breakMinutes: parsed.value.breakMinutes,
+      cycles: parsed.value.cycles
+    };
+    if (parsed.value.id) input.id = parsed.value.id;
+
+    await invoke("save_preset", { input });
     form.reset();
+    const hid = document.querySelector<HTMLInputElement>("#preset-id");
+    if (hid) hid.value = "";
+    setPresetEditingMode(false);
     if (error) error.textContent = "";
     await loadPresets();
   });
@@ -176,6 +227,20 @@ function bindResetHistory(): void {
   btn.addEventListener("click", async () => {
     await invoke("reset_history");
     await loadStats();
+  });
+}
+
+async function bindAppSettings(): Promise<void> {
+  const cb = document.querySelector<HTMLInputElement>("#auto-start-next-focus");
+  if (!cb) return;
+  try {
+    const s = await invoke<AppSettingsDto>("get_app_settings");
+    cb.checked = s.autoStartNextFocusAfterBreak;
+  } catch {
+    cb.checked = false;
+  }
+  cb.addEventListener("change", async () => {
+    await invoke("set_auto_start_next_focus_after_break", { enabled: cb.checked });
   });
 }
 

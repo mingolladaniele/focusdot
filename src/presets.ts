@@ -1,14 +1,17 @@
 export type PresetInput = {
+  id?: string;
   name: string;
   focusMinutes: number;
   breakMinutes: number;
   cycles: number;
-  autoStartNext: boolean;
 };
 
 export type PresetParseResult =
   | { ok: true; value: PresetInput }
   | { ok: false; error: string };
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function parsePresetForm(form: FormData): PresetParseResult {
   const name = String(form.get("name") ?? "").trim();
@@ -16,7 +19,15 @@ export function parsePresetForm(form: FormData): PresetParseResult {
   const breakMinutes = Number(form.get("breakMinutes"));
   const cyclesRaw = form.get("cycles");
   const cycles = cyclesRaw === null || cyclesRaw === "" ? 1 : Number(cyclesRaw);
-  const autoStartNext = form.get("autoStartNext") === "on";
+  const rawId = String(form.get("presetId") ?? "").trim();
+
+  let id: string | undefined;
+  if (rawId) {
+    if (!UUID_RE.test(rawId)) {
+      return { ok: false, error: "Invalid preset id." };
+    }
+    id = rawId;
+  }
 
   if (
     !name ||
@@ -33,5 +44,5 @@ export function parsePresetForm(form: FormData): PresetParseResult {
     };
   }
 
-  return { ok: true, value: { name, focusMinutes, breakMinutes, cycles, autoStartNext } };
+  return { ok: true, value: { id, name, focusMinutes, breakMinutes, cycles } };
 }

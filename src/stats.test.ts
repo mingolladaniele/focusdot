@@ -1,31 +1,31 @@
 import { describe, expect, it } from "vitest";
 import {
-  formatFocusMinutes,
-  formatFocusMinutesToday,
-  formatSessionsToday,
-  formatStreakDays
+  statFocusTodayValue,
+  statSessionsTodayValue,
+  statStreakValue,
+  statWeekValue
 } from "./stats";
 
-describe("stats formatting", () => {
-  it("formats minutes as hours and minutes", () => {
-    expect(formatFocusMinutes(0)).toBe("0h 0m this week");
-    expect(formatFocusMinutes(80)).toBe("1h 20m this week");
-  });
-
+describe("stats tile values", () => {
   it("formats session count", () => {
-    expect(formatSessionsToday(1)).toBe("1 session today");
-    expect(formatSessionsToday(3)).toBe("3 sessions today");
+    expect(statSessionsTodayValue(0)).toBe("0");
+    expect(statSessionsTodayValue(3)).toBe("3");
   });
 
   it("formats focus minutes today", () => {
-    expect(formatFocusMinutesToday(0)).toBe("0m today");
-    expect(formatFocusMinutesToday(45)).toBe("45m today");
-    expect(formatFocusMinutesToday(125)).toBe("2h 5m today");
+    expect(statFocusTodayValue(0)).toBe("0m");
+    expect(statFocusTodayValue(45)).toBe("45m");
+    expect(statFocusTodayValue(125)).toBe("2h 5m");
   });
 
   it("formats streak days", () => {
-    expect(formatStreakDays(0)).toBe("No streak yet");
-    expect(formatStreakDays(1)).toBe("1 day streak");
-    expect(formatStreakDays(7)).toBe("7 day streak");
+    expect(statStreakValue(0)).toBe("—");
+    expect(statStreakValue(1)).toBe("1");
+    expect(statStreakValue(7)).toBe("7");
+  });
+
+  it("formats week minutes", () => {
+    expect(statWeekValue(0)).toBe("0h 0m");
+    expect(statWeekValue(80)).toBe("1h 20m");
   });
 });

@@ -30,6 +30,7 @@
         <h2 id="presets-title">Presets</h2>
         <ul id="preset-list" class="preset-list" data-testid="preset-list"></ul>
         <form id="preset-form" class="preset-form">
+          <input type="hidden" id="preset-id" name="presetId" value="" />
           <label class="field" for="preset-name">
             <span>Name</span>
             <input id="preset-name" name="name" placeholder="Deep work" required />
@@ -46,26 +47,43 @@
             <span>Cycles</span>
             <input id="cycles" name="cycles" type="number" min="1" value="1" />
           </label>
-          <label class="toggle field" for="auto-start-next">
-            <input type="checkbox" id="auto-start-next" name="autoStartNext" />
-            Auto-start next focus after break
-          </label>
-          <button class="primary" type="submit">Save preset</button>
+          <div class="preset-form-actions">
+            <button class="primary" type="submit" id="preset-submit">Save preset</button>
+            <button type="button" class="ghost" id="preset-cancel-edit" hidden>Cancel edit</button>
+          </div>
         </form>
         <p id="preset-error" class="error" role="alert"></p>
       </section>
 
-      <section class="card" aria-labelledby="stats-title">
+      <section class="card stats-card" aria-labelledby="stats-title">
         <h2 id="stats-title">Statistics</h2>
-        <p class="stat" data-testid="sessions-today">0 sessions today</p>
-        <p class="stat" data-testid="focus-today">0m today</p>
-        <p class="stat" data-testid="streak-days">No streak yet</p>
-        <p class="stat" data-testid="focus-this-week">0h 0m this week</p>
-        <button type="button" class="ghost" id="reset-history">Reset statistics</button>
+        <div class="stats-grid">
+          <div class="stat-tile">
+            <span class="stat-value" data-testid="sessions-today">0</span>
+            <span class="stat-label">Sessions today</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value" data-testid="focus-today">0m</span>
+            <span class="stat-label">Focus today</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value" data-testid="streak-days">—</span>
+            <span class="stat-label">Day streak</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value" data-testid="focus-this-week">0h 0m</span>
+            <span class="stat-label">This week</span>
+          </div>
+        </div>
+        <button type="button" class="danger" id="reset-history">Reset statistics</button>
       </section>
 
       <section class="card" aria-labelledby="startup-title">
-        <h2 id="startup-title">Startup</h2>
+        <h2 id="startup-title">App</h2>
+        <label class="toggle">
+          <input type="checkbox" id="auto-start-next-focus" />
+          Auto-start next focus after break
+        </label>
         <label class="toggle">
           <input type="checkbox" id="launch-startup" />
           Launch on Windows startup
