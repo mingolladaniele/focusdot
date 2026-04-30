@@ -1,4 +1,4 @@
-use chrono::{TimeZone, Utc};
+use chrono::{Local, TimeZone, Utc};
 use punto::history::{FocusSession, History};
 use punto::stats::calculate_stats;
 use punto::storage::{load_json, save_json};
@@ -122,4 +122,38 @@ fn streak_is_zero_when_no_session_today() {
     };
     let stats = calculate_stats(&history, now);
     assert_eq!(stats.current_streak_days, 0);
+}
+
+#[test]
+fn uses_local_day_boundaries() {
+    let now = Utc.with_ymd_and_hms(2026, 4, 30, 0, 30, 0).unwrap();
+    let history = History {
+        sessions: vec![
+            FocusSession {
+                started_at: Utc.with_ymd_and_hms(2026, 4, 29, 23, 45, 0).unwrap(),
+                duration_minutes: 20,
+            },
+            FocusSession {
+                started_at: Utc.with_ymd_and_hms(2026, 4, 30, 0, 15, 0).unwrap(),
+                duration_minutes: 30,
+            },
+        ],
+    };
+
+    let local_today = now.with_timezone(&Local).date_naive();
+    let expected_sessions = history
+        .sessions
+        .iter()
+        .filter(|session| session.started_at.with_timezone(&Local).date_naive() == local_today)
+        .count();
+    let expected_minutes: u32 = history
+        .sessions
+        .iter()
+        .filter(|session| session.started_at.with_timezone(&Local).date_naive() == local_today)
+        .map(|session| session.duration_minutes)
+        .sum();
+
+    let stats = calculate_stats(&history, now);
+    assert_eq!(stats.sessions_today, expected_sessions);
+    assert_eq!(stats.focus_minutes_today, expected_minutes);
 }

@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, Duration, Local, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::history::History;
@@ -15,33 +15,34 @@ pub struct Stats {
 }
 
 pub fn calculate_stats(history: &History, now: DateTime<Utc>) -> Stats {
-    let today = now.date_naive();
-    let current_week = now.iso_week();
+    let now_local = now.with_timezone(&Local);
+    let today = now_local.date_naive();
+    let current_week = now_local.iso_week();
 
     let sessions_today = history
         .sessions
         .iter()
-        .filter(|session| session.started_at.date_naive() == today)
+        .filter(|session| session.started_at.with_timezone(&Local).date_naive() == today)
         .count();
 
     let focus_minutes_today = history
         .sessions
         .iter()
-        .filter(|session| session.started_at.date_naive() == today)
+        .filter(|session| session.started_at.with_timezone(&Local).date_naive() == today)
         .map(|session| session.duration_minutes)
         .sum();
 
     let focus_minutes_this_week = history
         .sessions
         .iter()
-        .filter(|session| session.started_at.iso_week() == current_week)
+        .filter(|session| session.started_at.with_timezone(&Local).iso_week() == current_week)
         .map(|session| session.duration_minutes)
         .sum();
 
     let session_dates: HashSet<NaiveDate> = history
         .sessions
         .iter()
-        .map(|session| session.started_at.date_naive())
+        .map(|session| session.started_at.with_timezone(&Local).date_naive())
         .collect();
     let mut current_streak_days = 0u32;
     let mut cursor = today;
