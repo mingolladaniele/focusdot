@@ -1,0 +1,29 @@
+{
+  "name": "punto",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:frontend && npm run test:rust",
+    "test:frontend": "vitest run --environment jsdom",
+    "test:rust": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cargo-path.ps1 test --manifest-path src-tauri/Cargo.toml",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0"
+  },
+  "devDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.60.2",
+    "@tauri-apps/cli": "^2.0.0",
+    "@tauri-apps/cli-win32-x64-msvc": "^2.10.1",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/user-event": "^14.5.2",
+    "jsdom": "^24.1.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0",
+    "vitest": "^2.0.5"
+  }
+}

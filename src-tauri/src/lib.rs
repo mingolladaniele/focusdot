@@ -1,0 +1,167 @@
+pub mod autostart;
+pub mod history;
+pub mod notifications;
+pub mod presets;
+mod state;
+pub mod stats;
+pub mod storage;
+pub mod timer;
+mod tray;
+
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
+
+use chrono::Utc;
+use tauri::path::BaseDirectory;
+use tauri::{AppHandle, Emitter, Manager};
+
+use crate::history::{FocusSession, History};
+use crate::notifications::{notify_break_complete, notify_focus_complete};
+use crate::presets::{Preset, PresetInput};
+use crate::state::AppState;
+use crate::stats::Stats;
+use crate::storage::save_json;
+use crate::timer::Phase;
+use crate::tray::{install_tray, refresh_tray_menu, set_tray_icon_phase};
+
+fn data_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
+    app.path()
+        .resolve("Punto", BaseDirectory::AppData)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn list_presets(state: tauri::State<'_, Arc<AppState>>) -> Result<Vec<Preset>, String> {
+    let core = state.inner.lock().map_err(|e| e.to_string())?;
+    Ok(core.presets.all().to_vec())
+}
+
+#[tauri::command]
+fn save_preset(
+    app: AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+    input: PresetInput,
+) -> Result<Preset, String> {
+    let preset = {
+        let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+        let p = core.presets.add(input).map_err(|e| e.to_string())?;
+        save_json(&core.presets_path, &core.presets).map_err(|e| e.to_string())?;
+        p
+    };
+    refresh_tray_menu(&app, &*state).map_err(|e| e.to_string())?;
+    Ok(preset)
+}
+
+#[tauri::command]
+fn delete_preset(
+    app: AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+    id: uuid::Uuid,
+) -> Result<(), String> {
+    {
+        let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+        core.presets.remove(id);
+        save_json(&core.presets_path, &core.presets).map_err(|e| e.to_string())?;
+    }
+    refresh_tray_menu(&app, &*state).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn get_stats(state: tauri::State<'_, Arc<AppState>>) -> Result<Stats, String> {
+    let core = state.inner.lock().map_err(|e| e.to_string())?;
+    Ok(crate::stats::calculate_stats(&core.history, Utc::now()))
+}
+
+#[tauri::command]
+fn reset_history(state: tauri::State<'_, Arc<AppState>>) -> Result<(), String> {
+    let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+    core.history = History::default();
+    save_json(&core.history_path, &core.history).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn spawn_timer_loop(state: Arc<AppState>) {
+    thread::spawn(move || loop {
+        thread::sleep(Duration::from_secs(1));
+        let mut core = match state.inner.lock() {
+            Ok(g) => g,
+            Err(_) => continue,
+        };
+        let old_phase = core.timer.phase();
+        let tick_result = core.timer.clone().tick(1);
+        core.timer = tick_result.timer;
+
+        if let Some(ev) = tick_result.event {
+            if let Some(mins) = ev.completed_focus_minutes {
+                let started = core.focus_started_at.unwrap_or_else(Utc::now);
+                core.history.sessions.push(FocusSession {
+                    started_at: started,
+                    duration_minutes: mins,
+                });
+                let _ = save_json(&core.history_path, &core.history);
+                core.focus_started_at = None;
+                let bm = ev.timer.remaining_seconds().saturating_div(60).max(1);
+                let app = state.app.clone();
+                drop(core);
+                let _ = notify_focus_complete(&app, bm);
+                let _ = set_tray_icon_phase(&app, Phase::Break);
+                let _ = app.emit("timer-changed", ());
+                continue;
+            }
+        }
+
+        if old_phase == Phase::Break && core.timer.phase() == Phase::Idle {
+            let app = state.app.clone();
+            drop(core);
+            let _ = notify_break_complete(&app);
+            let _ = set_tray_icon_phase(&app, Phase::Idle);
+            let _ = app.emit("timer-changed", ());
+            continue;
+        }
+
+        let new_phase = core.timer.phase();
+        drop(core);
+        if new_phase != old_phase {
+            let _ = set_tray_icon_phase(&state.app, new_phase);
+            let _ = state.app.emit("timer-changed", ());
+        }
+    });
+}
+
+pub fn run() {
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_autostart::Builder::new().build())
+        .setup(|app| {
+            let handle = app.handle().clone();
+            let dir = data_dir(&handle).map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+            std::fs::create_dir_all(&dir).map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+            let history_path = dir.join("history.json");
+            let presets_path = dir.join("presets.json");
+
+            let state = Arc::new(AppState::new(handle.clone(), history_path, presets_path));
+            app.manage(state.clone());
+
+            install_tray(app, state.clone()).map_err(|e| -> Box<dyn std::error::Error> { e.into() })?;
+            spawn_timer_loop(state);
+
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            list_presets,
+            save_preset,
+            delete_preset,
+            get_stats,
+            reset_history,
+            autostart::is_autostart_enabled,
+            autostart::set_autostart_enabled
+        ])
+        .build(tauri::generate_context!())
+        .expect("failed to build Punto");
+
+    app.run(|_handle, event| {
+        let _ = event;
+    });
+}

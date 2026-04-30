@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Punto</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 1rem;
+        color: #111;
+      }
+      section {
+        margin-bottom: 1.5rem;
+      }
+      ul {
+        padding-left: 1.2rem;
+      }
+      button {
+        margin-right: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="app">
+      <h1>Punto</h1>
+      <section aria-labelledby="stats-title">
+        <h2 id="stats-title">Statistics</h2>
+        <p data-testid="sessions-today">0 sessions today</p>
+        <p data-testid="focus-this-week">0h 0m this week</p>
+        <button type="button" id="reset-history">Reset statistics</button>
+      </section>
+      <section aria-labelledby="startup-title">
+        <h2 id="startup-title">Startup</h2>
+        <label>
+          <input type="checkbox" id="launch-startup" />
+          Launch on Windows startup
+        </label>
+      </section>
+      <section aria-labelledby="presets-title">
+        <h2 id="presets-title">Presets</h2>
+        <ul id="preset-list" data-testid="preset-list"></ul>
+        <form id="preset-form">
+          <label>
+            Name
+            <input id="preset-name" name="name" required />
+          </label>
+          <label>
+            Focus minutes
+            <input id="focus-minutes" name="focusMinutes" type="number" min="1" required />
+          </label>
+          <label>
+            Break minutes
+            <input id="break-minutes" name="breakMinutes" type="number" min="1" required />
+          </label>
+          <button type="submit">Save preset</button>
+        </form>
+        <p id="preset-error" role="alert"></p>
+      </section>
+    </main>
+    <script type="module">
+      import { bootstrap } from "/src/main.ts";
+      bootstrap();
+    </script>
+  </body>
+</html>

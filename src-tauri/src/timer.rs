@@ -1,0 +1,141 @@
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Phase {
+    Idle,
+    Focus,
+    Break,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Timer {
+    phase: Phase,
+    remaining_seconds: u32,
+    focus_minutes: u32,
+    break_minutes: u32,
+    running: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TickResult {
+    pub timer: Timer,
+    pub event: Option<TimerEvent>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TimerEvent {
+    pub timer: Timer,
+    pub completed_focus_minutes: Option<u32>,
+}
+
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum TimerError {
+    #[error("minutes must be greater than zero")]
+    InvalidMinutes,
+    #[error("timer is idle")]
+    Idle,
+    #[error("timer is already running")]
+    AlreadyRunning,
+}
+
+impl Timer {
+    pub fn new() -> Self {
+        Self {
+            phase: Phase::Idle,
+            remaining_seconds: 0,
+            focus_minutes: 0,
+            break_minutes: 0,
+            running: false,
+        }
+    }
+
+    pub fn start_focus(mut self, focus_minutes: u32, break_minutes: u32) -> Result<Self, TimerError> {
+        if focus_minutes == 0 || break_minutes == 0 {
+            return Err(TimerError::InvalidMinutes);
+        }
+
+        self.phase = Phase::Focus;
+        self.remaining_seconds = focus_minutes * 60;
+        self.focus_minutes = focus_minutes;
+        self.break_minutes = break_minutes;
+        self.running = true;
+        Ok(self)
+    }
+
+    pub fn pause(mut self) -> Result<Self, TimerError> {
+        if self.phase == Phase::Idle {
+            return Err(TimerError::Idle);
+        }
+
+        self.running = false;
+        Ok(self)
+    }
+
+    pub fn resume(mut self) -> Result<Self, TimerError> {
+        if self.phase == Phase::Idle {
+            return Err(TimerError::Idle);
+        }
+        if self.running {
+            return Err(TimerError::AlreadyRunning);
+        }
+
+        self.running = true;
+        Ok(self)
+    }
+
+    pub fn stop(self) -> Self {
+        Self::new()
+    }
+
+    pub fn tick(mut self, elapsed_seconds: u32) -> TickResult {
+        if !self.running || self.phase == Phase::Idle {
+            return TickResult { timer: self, event: None };
+        }
+
+        if elapsed_seconds < self.remaining_seconds {
+            self.remaining_seconds -= elapsed_seconds;
+            return TickResult { timer: self, event: None };
+        }
+
+        match self.phase {
+            Phase::Focus => {
+                self.phase = Phase::Break;
+                self.remaining_seconds = self.break_minutes * 60;
+                let event_timer = self.clone();
+                TickResult {
+                    timer: self.clone(),
+                    event: Some(TimerEvent {
+                        timer: event_timer,
+                        completed_focus_minutes: Some(self.focus_minutes),
+                    }),
+                }
+            }
+            Phase::Break => {
+                self.phase = Phase::Idle;
+                self.remaining_seconds = 0;
+                self.running = false;
+                TickResult { timer: self, event: None }
+            }
+            Phase::Idle => TickResult { timer: self, event: None },
+        }
+    }
+
+    pub fn phase(&self) -> Phase {
+        self.phase
+    }
+
+    pub fn remaining_seconds(&self) -> u32 {
+        self.remaining_seconds
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.running
+    }
+}
+
+impl Default for Timer {
+    fn default() -> Self {
+        Self::new()
+    }
+}

@@ -1,0 +1,57 @@
+use chrono::{TimeZone, Utc};
+use punto::history::{FocusSession, History};
+use punto::stats::calculate_stats;
+use punto::storage::{load_json, save_json};
+
+#[test]
+fn saves_and_loads_history_json() {
+    let temp = assert_fs::TempDir::new().expect("temp dir");
+    let path = temp.path().join("history.json");
+    let history = History {
+        sessions: vec![FocusSession {
+            started_at: Utc.with_ymd_and_hms(2026, 4, 30, 9, 0, 0).unwrap(),
+            duration_minutes: 25,
+        }],
+    };
+
+    save_json(&path, &history).expect("save history");
+    let loaded: History = load_json(&path).expect("load history");
+
+    assert_eq!(loaded, history);
+}
+
+#[test]
+fn missing_json_file_returns_default_value() {
+    let temp = assert_fs::TempDir::new().expect("temp dir");
+    let path = temp.path().join("missing.json");
+
+    let loaded: History = load_json(&path).expect("load missing history");
+
+    assert_eq!(loaded, History::default());
+}
+
+#[test]
+fn calculates_today_sessions_and_week_minutes() {
+    let now = Utc.with_ymd_and_hms(2026, 4, 30, 12, 0, 0).unwrap();
+    let history = History {
+        sessions: vec![
+            FocusSession {
+                started_at: Utc.with_ymd_and_hms(2026, 4, 30, 9, 0, 0).unwrap(),
+                duration_minutes: 25,
+            },
+            FocusSession {
+                started_at: Utc.with_ymd_and_hms(2026, 4, 29, 9, 0, 0).unwrap(),
+                duration_minutes: 55,
+            },
+            FocusSession {
+                started_at: Utc.with_ymd_and_hms(2026, 4, 20, 9, 0, 0).unwrap(),
+                duration_minutes: 25,
+            },
+        ],
+    };
+
+    let stats = calculate_stats(&history, now);
+
+    assert_eq!(stats.sessions_today, 1);
+    assert_eq!(stats.focus_minutes_this_week, 80);
+}
