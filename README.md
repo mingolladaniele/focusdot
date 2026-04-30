@@ -1,12 +1,8 @@
-**App icon:** add `docs/assets/icon.png` (128×128) and uncomment the image block below when ready.
-
-<!--
-<p align="center"><img src="docs/assets/icon.png" alt="Punto" width="96" height="96" /></p>
--->
+<p align="center"><img src="src-tauri/icons/128x128.png" alt="Punto" width="96" height="96" /></p>
 
 # Punto
 
-Minimalist Windows Pomodoro timer in the system tray. The tray icon is a small circle: **white** when idle, **green** during focus, **blue** on break.
+Minimalist Windows Pomodoro timer in the system tray. The tray icon is a small circle: **white** when idle, **green** during focus, **blue** on break. The static installer icon and README badge use the same circular dot branding.
 
 - **Presets** with focus/break minutes, **repeat cycles**, and optional **auto-start** of the next focus after each break.
 - **Native toasts** with short motivational copy and your daily stats (focus minutes today, sessions, streak).
