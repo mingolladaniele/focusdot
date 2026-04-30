@@ -1,7 +1,12 @@
 import { screen } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { applyTimerSnapshot, bootstrap } from "./main";
+import {
+  applyTimerSnapshot,
+  bootstrap,
+  shouldRefreshStatsAfterTick,
+  type TimerSnapshot
+} from "./main";
 
 const invoke = vi.fn();
 const listen = vi.fn();
@@ -64,6 +69,36 @@ beforeEach(() => {
   invoke.mockReset();
   listen.mockReset();
   listen.mockResolvedValue(() => {});
+});
+
+describe("shouldRefreshStatsAfterTick", () => {
+  const focusSnap = (): TimerSnapshot => ({
+    phase: "Focus",
+    running: true,
+    remaining_seconds: 60,
+    focus_minutes: 25,
+    break_minutes: 5,
+    cycles_remaining: 0,
+    auto_start_next: false
+  });
+
+  const breakSnap = (): TimerSnapshot => ({
+    phase: "Break",
+    running: true,
+    remaining_seconds: 300,
+    focus_minutes: 25,
+    break_minutes: 5,
+    cycles_remaining: 0,
+    auto_start_next: false
+  });
+
+  it("returns true only when previous Focus and payload Break", () => {
+    expect(shouldRefreshStatsAfterTick("Focus", breakSnap())).toBe(true);
+    expect(shouldRefreshStatsAfterTick(undefined, breakSnap())).toBe(false);
+    expect(shouldRefreshStatsAfterTick("Focus", focusSnap())).toBe(false);
+    expect(shouldRefreshStatsAfterTick("Break", focusSnap())).toBe(false);
+    expect(shouldRefreshStatsAfterTick("Idle", focusSnap())).toBe(false);
+  });
 });
 
 describe("settings window", () => {

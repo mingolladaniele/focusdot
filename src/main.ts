@@ -37,6 +37,14 @@ export type TimerSnapshot = {
   auto_start_next: boolean;
 };
 
+/** Stats change when history changes; focus completion is Focus → Break in the timer model. */
+export function shouldRefreshStatsAfterTick(
+  previousPhase: TimerSnapshot["phase"] | undefined,
+  payload: TimerSnapshot
+): boolean {
+  return previousPhase === "Focus" && payload.phase === "Break";
+}
+
 const PHASE_LABEL: Record<TimerSnapshot["phase"], string> = {
   Idle: "Idle",
   Focus: "Focus session",
