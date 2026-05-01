@@ -30,6 +30,8 @@ pub struct Timer {
     remaining_seconds: u32,
     focus_minutes: u32,
     break_minutes: u32,
+    /// Preset `cycles` value for the current session (0 when idle).
+    total_cycles: u32,
     cycles_remaining: u32,
     auto_start_next: bool,
     running: bool,
@@ -64,6 +66,7 @@ impl Timer {
             remaining_seconds: 0,
             focus_minutes: 0,
             break_minutes: 0,
+            total_cycles: 0,
             cycles_remaining: 0,
             auto_start_next: false,
             running: false,
@@ -85,10 +88,19 @@ impl Timer {
         self.remaining_seconds = focus_minutes * 60;
         self.focus_minutes = focus_minutes;
         self.break_minutes = break_minutes;
+        self.total_cycles = cycles;
         self.cycles_remaining = cycles - 1;
         self.auto_start_next = auto_start_next;
         self.running = true;
         Ok(self)
+    }
+
+    /// Updates the in-session auto-start flag. When idle, returns `self` unchanged.
+    pub fn with_auto_start_next(mut self, enabled: bool) -> Self {
+        if self.phase != Phase::Idle {
+            self.auto_start_next = enabled;
+        }
+        self
     }
 
     pub fn pause(mut self) -> Result<Self, TimerError> {
@@ -146,15 +158,29 @@ impl Timer {
                 }
             }
             Phase::Break => {
-                if self.cycles_remaining > 0 && self.auto_start_next {
-                    self.cycles_remaining -= 1;
-                    self.phase = Phase::Focus;
-                    self.remaining_seconds = self.focus_minutes * 60;
-                    self.running = true;
+                if self.auto_start_next {
+                    if self.cycles_remaining > 0 {
+                        self.cycles_remaining -= 1;
+                        self.phase = Phase::Focus;
+                        self.remaining_seconds = self.focus_minutes * 60;
+                        self.running = true;
+                    } else if self.total_cycles == 1 {
+                        self.phase = Phase::Focus;
+                        self.remaining_seconds = self.focus_minutes * 60;
+                        self.running = true;
+                    } else {
+                        self.phase = Phase::Idle;
+                        self.remaining_seconds = 0;
+                        self.cycles_remaining = 0;
+                        self.total_cycles = 0;
+                        self.auto_start_next = false;
+                        self.running = false;
+                    }
                 } else {
                     self.phase = Phase::Idle;
                     self.remaining_seconds = 0;
                     self.cycles_remaining = 0;
+                    self.total_cycles = 0;
                     self.auto_start_next = false;
                     self.running = false;
                 }
