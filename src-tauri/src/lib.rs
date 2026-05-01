@@ -112,9 +112,14 @@ fn set_auto_start_next_focus_after_break(
     state: tauri::State<'_, Arc<AppState>>,
     enabled: bool,
 ) -> Result<(), String> {
-    let mut core = state.inner.lock().map_err(|e| e.to_string())?;
-    core.settings.auto_start_next_focus_after_break = enabled;
-    save_json(&core.settings_path, &core.settings).map_err(|e| e.to_string())?;
+    let snapshot = {
+        let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+        core.settings.auto_start_next_focus_after_break = enabled;
+        save_json(&core.settings_path, &core.settings).map_err(|e| e.to_string())?;
+        core.timer = core.timer.clone().with_auto_start_next(enabled);
+        core.timer.snapshot()
+    };
+    let _ = state.app.emit("timer-tick", &snapshot);
     Ok(())
 }
 
