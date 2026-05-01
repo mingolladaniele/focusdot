@@ -118,12 +118,14 @@ impl Timer {
         Self::new()
     }
 
-    /// Ends the current break early using the same transition as natural break completion in `tick()`.
+    /// Ends the current break early. If another focus cycle remains (`cycles_remaining > 0`),
+    /// starts that focus immediately—regardless of `auto_start_next` (that flag only affects
+    /// automatic transition when the break countdown finishes).
     pub fn skip_break(mut self) -> Result<Self, TimerError> {
         if self.phase != Phase::Break {
             return Err(TimerError::WrongPhase);
         }
-        if self.cycles_remaining > 0 && self.auto_start_next {
+        if self.cycles_remaining > 0 {
             self.cycles_remaining -= 1;
             self.phase = Phase::Focus;
             self.remaining_seconds = self.focus_minutes * 60;

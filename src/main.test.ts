@@ -95,7 +95,7 @@ beforeEach(() => {
           <label class="toggle">
             <span class="toggle-text">
               <span class="toggle-label">Auto-start next focus after break</span>
-              <span class="toggle-hint">Skip the manual nudge between cycles.</span>
+              <span class="toggle-hint">When off, the timer stops after each break until you start again; you can still press Start focus now during a break to continue a multi-cycle plan.</span>
             </span>
             <span class="switch">
               <input type="checkbox" id="auto-start-next-focus" />

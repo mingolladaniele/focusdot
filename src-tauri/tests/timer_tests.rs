@@ -170,6 +170,20 @@ fn skip_break_mid_multi_cycle_with_auto_start_goes_to_focus() {
 }
 
 #[test]
+fn skip_break_mid_multi_cycle_without_auto_start_still_goes_to_focus() {
+    let timer = Timer::new().start_focus(1, 1, 2, false).expect("starts");
+    let timer = timer.tick(60).timer;
+    assert_eq!(timer.phase(), Phase::Break);
+
+    let timer = timer.skip_break().expect("skip break");
+
+    assert_eq!(timer.phase(), Phase::Focus);
+    assert_eq!(timer.remaining_seconds(), 60);
+    assert_eq!(timer.snapshot().cycles_remaining, 0);
+    assert!(timer.is_running());
+}
+
+#[test]
 fn skip_break_on_final_break_goes_idle() {
     let timer = Timer::new()
         .start_focus(1, 1, 1, true)
@@ -185,7 +199,7 @@ fn skip_break_on_final_break_goes_idle() {
 
 #[test]
 fn skip_break_while_break_paused_starts_focus_running() {
-    let timer = Timer::new().start_focus(1, 1, 2, true).expect("starts");
+    let timer = Timer::new().start_focus(1, 1, 2, false).expect("starts");
     let timer = timer.tick(60).timer; // break, running
     let timer = timer.pause().expect("pause break");
     assert_eq!(timer.phase(), Phase::Break);
