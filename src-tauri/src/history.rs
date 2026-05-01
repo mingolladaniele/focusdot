@@ -14,4 +14,6 @@ pub struct FocusSession {
     pub started_at: DateTime<Utc>,
     #[serde(alias = "duration_minutes")]
     pub duration_minutes: u32,
+    #[serde(default)]
+    pub starred: bool,
 }

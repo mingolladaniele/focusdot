@@ -11,6 +11,7 @@ fn saves_and_loads_history_json() {
         sessions: vec![FocusSession {
             started_at: Utc.with_ymd_and_hms(2026, 4, 30, 9, 0, 0).unwrap(),
             duration_minutes: 25,
+            starred: false,
         }],
     };
 
@@ -38,14 +39,17 @@ fn calculates_today_sessions_and_week_minutes() {
             FocusSession {
                 started_at: Utc.with_ymd_and_hms(2026, 4, 30, 9, 0, 0).unwrap(),
                 duration_minutes: 25,
+                starred: false,
             },
             FocusSession {
                 started_at: Utc.with_ymd_and_hms(2026, 4, 29, 9, 0, 0).unwrap(),
                 duration_minutes: 55,
+                starred: false,
             },
             FocusSession {
                 started_at: Utc.with_ymd_and_hms(2026, 4, 20, 9, 0, 0).unwrap(),
                 duration_minutes: 25,
+                starred: false,
             },
         ],
     };
@@ -65,14 +69,17 @@ fn calculates_focus_minutes_today() {
             FocusSession {
                 started_at: now,
                 duration_minutes: 25,
+                starred: false,
             },
             FocusSession {
                 started_at: now - chrono::Duration::hours(2),
                 duration_minutes: 50,
+                starred: false,
             },
             FocusSession {
                 started_at: now - chrono::Duration::days(1),
                 duration_minutes: 25,
+                starred: false,
             },
         ],
     };
@@ -90,19 +97,23 @@ fn calculates_streak_days() {
             FocusSession {
                 started_at: now,
                 duration_minutes: 25,
+                starred: false,
             },
             FocusSession {
                 started_at: now - chrono::Duration::days(1),
                 duration_minutes: 25,
+                starred: false,
             },
             FocusSession {
                 started_at: now - chrono::Duration::days(2),
                 duration_minutes: 25,
+                starred: false,
             },
             // Gap: no session 3 days ago.
             FocusSession {
                 started_at: now - chrono::Duration::days(4),
                 duration_minutes: 25,
+                starred: false,
             },
         ],
     };
@@ -118,6 +129,7 @@ fn streak_is_zero_when_no_session_today() {
         sessions: vec![FocusSession {
             started_at: now - chrono::Duration::days(1),
             duration_minutes: 25,
+            starred: false,
         }],
     };
     let stats = calculate_stats(&history, now);
@@ -132,10 +144,12 @@ fn uses_local_day_boundaries() {
             FocusSession {
                 started_at: Utc.with_ymd_and_hms(2026, 4, 29, 23, 45, 0).unwrap(),
                 duration_minutes: 20,
+                starred: false,
             },
             FocusSession {
                 started_at: Utc.with_ymd_and_hms(2026, 4, 30, 0, 15, 0).unwrap(),
                 duration_minutes: 30,
+                starred: false,
             },
         ],
     };
@@ -167,14 +181,17 @@ fn focus_minutes_today_matches_sum_of_session_durations_today() {
             FocusSession {
                 started_at: now,
                 duration_minutes: 25,
+                starred: false,
             },
             FocusSession {
                 started_at: now - chrono::Duration::hours(3),
                 duration_minutes: 40,
+                starred: false,
             },
             FocusSession {
                 started_at: now - chrono::Duration::days(1),
                 duration_minutes: 99,
+                starred: false,
             },
         ],
     };
@@ -201,10 +218,12 @@ fn focus_minutes_this_week_matches_filtered_duration_sum() {
             FocusSession {
                 started_at: inside_week,
                 duration_minutes: 30,
+                starred: false,
             },
             FocusSession {
                 started_at: outside_week,
                 duration_minutes: 999,
+                starred: false,
             },
         ],
     };
@@ -226,10 +245,30 @@ fn history_json_accepts_camel_case_session_fields() {
     let loaded: History = serde_json::from_str(raw).expect("camelCase keys");
     assert_eq!(loaded.sessions.len(), 1);
     assert_eq!(loaded.sessions[0].duration_minutes, 25);
+    assert!(!loaded.sessions[0].starred);
 
     let stats = calculate_stats(
         &loaded,
         Utc.with_ymd_and_hms(2026, 4, 30, 12, 0, 0).unwrap(),
     );
     assert_eq!(stats.focus_minutes_today, 25);
+}
+
+#[test]
+fn focus_session_defaults_starred_false() {
+    let raw = r#"{"startedAt":"2026-04-30T09:00:00Z","durationMinutes":25}"#;
+    let s: FocusSession = serde_json::from_str(raw).unwrap();
+    assert!(!s.starred);
+}
+
+#[test]
+fn focus_session_roundtrip_starred() {
+    let s = FocusSession {
+        started_at: Utc.with_ymd_and_hms(2026, 4, 30, 9, 0, 0).unwrap(),
+        duration_minutes: 25,
+        starred: true,
+    };
+    let json = serde_json::to_string(&s).unwrap();
+    let back: FocusSession = serde_json::from_str(&json).unwrap();
+    assert_eq!(back, s);
 }
