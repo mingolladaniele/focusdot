@@ -25,6 +25,7 @@ type StatsResponse = {
 
 type AppSettingsDto = {
   autoStartNextFocusAfterBreak: boolean;
+  notificationsEnabled: boolean;
 };
 
 export type TimerSnapshot = {
@@ -293,16 +294,24 @@ function bindResetHistory(): void {
 }
 
 async function bindAppSettings(): Promise<void> {
-  const cb = document.querySelector<HTMLInputElement>("#auto-start-next-focus");
-  if (!cb) return;
+  const auto = document.querySelector<HTMLInputElement>("#auto-start-next-focus");
+  const notif = document.querySelector<HTMLInputElement>("#notifications-enabled");
+  if (!auto && !notif) return;
+
   try {
     const s = await invoke<AppSettingsDto>("get_app_settings");
-    cb.checked = s.autoStartNextFocusAfterBreak;
+    if (auto) auto.checked = s.autoStartNextFocusAfterBreak;
+    if (notif) notif.checked = s.notificationsEnabled;
   } catch {
-    cb.checked = false;
+    if (auto) auto.checked = false;
+    if (notif) notif.checked = true;
   }
-  cb.addEventListener("change", async () => {
-    await invoke("set_auto_start_next_focus_after_break", { enabled: cb.checked });
+
+  auto?.addEventListener("change", async () => {
+    await invoke("set_auto_start_next_focus_after_break", { enabled: auto.checked });
+  });
+  notif?.addEventListener("change", async () => {
+    await invoke("set_notifications_enabled", { enabled: notif.checked });
   });
 }
 

@@ -103,6 +103,16 @@ beforeEach(() => {
           </label>
           <label class="toggle">
             <span class="toggle-text">
+              <span class="toggle-label">Session notifications</span>
+              <span class="toggle-hint">Desktop alerts when a focus or break block ends.</span>
+            </span>
+            <span class="switch">
+              <input type="checkbox" id="notifications-enabled" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+          <label class="toggle">
+            <span class="toggle-text">
               <span class="toggle-label">Launch on Windows startup</span>
               <span class="toggle-hint">Open focusdot when you sign in.</span>
             </span>
@@ -212,7 +222,10 @@ describe("settings window", () => {
       }
       if (cmd === "list_presets") return Promise.resolve([]);
       if (cmd === "get_app_settings") {
-        return Promise.resolve({ autoStartNextFocusAfterBreak: false });
+        return Promise.resolve({
+          autoStartNextFocusAfterBreak: false,
+          notificationsEnabled: true
+        });
       }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
       if (cmd === "get_timer") {
@@ -247,7 +260,10 @@ describe("settings window", () => {
       }
       if (cmd === "list_presets") return Promise.resolve([]);
       if (cmd === "get_app_settings") {
-        return Promise.resolve({ autoStartNextFocusAfterBreak: false });
+        return Promise.resolve({
+          autoStartNextFocusAfterBreak: false,
+          notificationsEnabled: true
+        });
       }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
       if (cmd === "get_timer") {
@@ -293,7 +309,10 @@ describe("settings window", () => {
       }
       if (cmd === "list_presets") return Promise.resolve([]);
       if (cmd === "get_app_settings") {
-        return Promise.resolve({ autoStartNextFocusAfterBreak: false });
+        return Promise.resolve({
+          autoStartNextFocusAfterBreak: false,
+          notificationsEnabled: true
+        });
       }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
       if (cmd === "get_timer") {
@@ -348,7 +367,10 @@ describe("settings window", () => {
       }
       if (cmd === "list_presets") return Promise.resolve([]);
       if (cmd === "get_app_settings") {
-        return Promise.resolve({ autoStartNextFocusAfterBreak: false });
+        return Promise.resolve({
+          autoStartNextFocusAfterBreak: false,
+          notificationsEnabled: true
+        });
       }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
       if (cmd === "get_timer") {
@@ -397,7 +419,10 @@ describe("settings window", () => {
       }
       if (cmd === "list_presets") return Promise.resolve([]);
       if (cmd === "get_app_settings") {
-        return Promise.resolve({ autoStartNextFocusAfterBreak: false });
+        return Promise.resolve({
+          autoStartNextFocusAfterBreak: false,
+          notificationsEnabled: true
+        });
       }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
       if (cmd === "get_timer") {
@@ -428,5 +453,46 @@ describe("settings window", () => {
         cycles: 1
       }
     });
+  });
+
+  it("invokes set_notifications_enabled when session notifications toggle changes", async () => {
+    invoke.mockImplementation((cmd: string) => {
+      if (cmd === "get_stats") {
+        return Promise.resolve({
+          sessionsToday: 0,
+          focusMinutesToday: 0,
+          focusMinutesThisWeek: 0,
+          currentStreakDays: 0
+        });
+      }
+      if (cmd === "list_presets") return Promise.resolve([]);
+      if (cmd === "get_app_settings") {
+        return Promise.resolve({
+          autoStartNextFocusAfterBreak: false,
+          notificationsEnabled: true
+        });
+      }
+      if (cmd === "is_autostart_enabled") return Promise.resolve(false);
+      if (cmd === "get_timer") {
+        return Promise.resolve({
+          phase: "Idle",
+          running: false,
+          remaining_seconds: 0,
+          focus_minutes: 0,
+          break_minutes: 0,
+          cycles_remaining: 0,
+          auto_start_next: false
+        });
+      }
+      return Promise.resolve(undefined);
+    });
+
+    await bootstrap();
+
+    const cb = document.querySelector<HTMLInputElement>("#notifications-enabled")!;
+    cb.checked = false;
+    cb.dispatchEvent(new Event("change", { bubbles: true }));
+
+    expect(invoke).toHaveBeenCalledWith("set_notifications_enabled", { enabled: false });
   });
 });
