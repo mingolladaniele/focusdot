@@ -95,6 +95,7 @@ fn get_timer(state: tauri::State<'_, Arc<AppState>>) -> Result<TimerSnapshot, St
 #[serde(rename_all = "camelCase")]
 struct AppSettingsDto {
     auto_start_next_focus_after_break: bool,
+    notifications_enabled: bool,
 }
 
 #[tauri::command]
@@ -102,6 +103,7 @@ fn get_app_settings(state: tauri::State<'_, Arc<AppState>>) -> Result<AppSetting
     let core = state.inner.lock().map_err(|e| e.to_string())?;
     Ok(AppSettingsDto {
         auto_start_next_focus_after_break: core.settings.auto_start_next_focus_after_break,
+        notifications_enabled: core.settings.notifications_enabled,
     })
 }
 
@@ -112,6 +114,17 @@ fn set_auto_start_next_focus_after_break(
 ) -> Result<(), String> {
     let mut core = state.inner.lock().map_err(|e| e.to_string())?;
     core.settings.auto_start_next_focus_after_break = enabled;
+    save_json(&core.settings_path, &core.settings).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn set_notifications_enabled(
+    state: tauri::State<'_, Arc<AppState>>,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+    core.settings.notifications_enabled = enabled;
     save_json(&core.settings_path, &core.settings).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -334,6 +347,7 @@ pub fn run() {
             get_timer,
             get_app_settings,
             set_auto_start_next_focus_after_break,
+            set_notifications_enabled,
             start_preset,
             pause_timer,
             resume_timer,
