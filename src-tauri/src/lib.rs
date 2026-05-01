@@ -95,6 +95,7 @@ fn get_timer(state: tauri::State<'_, Arc<AppState>>) -> Result<TimerSnapshot, St
 #[serde(rename_all = "camelCase")]
 struct AppSettingsDto {
     auto_start_next_focus_after_break: bool,
+    notifications_enabled: bool,
 }
 
 #[tauri::command]
@@ -102,6 +103,7 @@ fn get_app_settings(state: tauri::State<'_, Arc<AppState>>) -> Result<AppSetting
     let core = state.inner.lock().map_err(|e| e.to_string())?;
     Ok(AppSettingsDto {
         auto_start_next_focus_after_break: core.settings.auto_start_next_focus_after_break,
+        notifications_enabled: core.settings.notifications_enabled,
     })
 }
 
@@ -112,6 +114,17 @@ fn set_auto_start_next_focus_after_break(
 ) -> Result<(), String> {
     let mut core = state.inner.lock().map_err(|e| e.to_string())?;
     core.settings.auto_start_next_focus_after_break = enabled;
+    save_json(&core.settings_path, &core.settings).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn set_notifications_enabled(
+    state: tauri::State<'_, Arc<AppState>>,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+    core.settings.notifications_enabled = enabled;
     save_json(&core.settings_path, &core.settings).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -230,9 +243,12 @@ fn spawn_timer_loop(state: Arc<AppState>) {
                     .saturating_div(60)
                     .max(1);
                 let stats = crate::stats::calculate_stats(&core.history, Utc::now());
+                let notifications_enabled = core.settings.notifications_enabled;
                 let app = state.app.clone();
                 drop(core);
-                let _ = notify_focus_complete(&app, &stats, bm);
+                if notifications_enabled {
+                    let _ = notify_focus_complete(&app, &stats, bm);
+                }
                 let _ = set_tray_icon_phase(&app, Phase::Break);
                 let _ = refresh_tray_menu(&app, &state);
                 let _ = app.emit("timer-tick", &snapshot);
@@ -242,9 +258,12 @@ fn spawn_timer_loop(state: Arc<AppState>) {
 
         if old_phase == Phase::Break && core.timer.phase() == Phase::Idle {
             let stats = crate::stats::calculate_stats(&core.history, Utc::now());
+            let notifications_enabled = core.settings.notifications_enabled;
             let app = state.app.clone();
             drop(core);
-            let _ = notify_break_complete(&app, &stats);
+            if notifications_enabled {
+                let _ = notify_break_complete(&app, &stats);
+            }
             let _ = set_tray_icon_phase(&app, Phase::Idle);
             let _ = refresh_tray_menu(&app, &state);
             let _ = app.emit("timer-tick", &snapshot);
@@ -328,6 +347,7 @@ pub fn run() {
             get_timer,
             get_app_settings,
             set_auto_start_next_focus_after_break,
+            set_notifications_enabled,
             start_preset,
             pause_timer,
             resume_timer,
