@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run test:frontend && npm run test:rust",
     "test:frontend": "vitest run --environment jsdom",
+    "test:rust:ci": "cargo test --manifest-path src-tauri/Cargo.toml",
     "test:rust": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cargo-path.ps1 test --manifest-path src-tauri/Cargo.toml",
     "tauri": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-tauri.ps1",
     "build:installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-tauri.ps1 build",
