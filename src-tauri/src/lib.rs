@@ -21,7 +21,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::history::{FocusSession, History};
 use crate::notifications::{notify_break_complete, notify_focus_complete};
 use crate::presets::{Preset, PresetInput};
-use crate::state::AppState;
+use crate::state::{AppState, Core};
 use crate::stats::Stats;
 use crate::storage::save_json;
 use crate::timer::{should_emit_periodic_timer_tick, Phase, TimerSnapshot};
@@ -81,6 +81,7 @@ fn get_stats(state: tauri::State<'_, Arc<AppState>>) -> Result<Stats, String> {
 fn reset_history(state: tauri::State<'_, Arc<AppState>>) -> Result<(), String> {
     let mut core = state.inner.lock().map_err(|e| e.to_string())?;
     core.history = History::default();
+    core.star_pending_session_index = None;
     save_json(&core.history_path, &core.history).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -158,6 +159,7 @@ fn start_preset(
             .map_err(|e| e.to_string())?;
         core.timer = timer;
         core.focus_started_at = Some(Utc::now());
+        core.star_pending_session_index = None;
         core.timer.snapshot()
     };
     set_tray_icon_phase(&app, Phase::Focus).map_err(|e| e.to_string())?;
@@ -207,12 +209,37 @@ fn stop_timer(
         let mut core = state.inner.lock().map_err(|e| e.to_string())?;
         core.timer = core.timer.clone().stop();
         core.focus_started_at = None;
+        core.star_pending_session_index = None;
         core.timer.snapshot()
     };
     set_tray_icon_phase(&app, Phase::Idle).map_err(|e| e.to_string())?;
     refresh_tray_menu(&app, &*state).map_err(|e| e.to_string())?;
     let _ = app.emit("timer-tick", &snapshot);
     Ok(snapshot)
+}
+
+fn try_star_current_session(core: &mut Core) -> Result<(), String> {
+    if core.timer.phase() != Phase::Break {
+        return Err("star is only available during a break".to_string());
+    }
+    let idx = core
+        .star_pending_session_index
+        .ok_or_else(|| "no pending session to star".to_string())?;
+    let session = core
+        .history
+        .sessions
+        .get_mut(idx)
+        .ok_or_else(|| "session index out of range".to_string())?;
+    session.starred = true;
+    Ok(())
+}
+
+#[tauri::command]
+fn star_current_session(state: tauri::State<'_, Arc<AppState>>) -> Result<(), String> {
+    let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+    try_star_current_session(&mut core)?;
+    save_json(&core.history_path, &core.history).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 fn spawn_timer_loop(state: Arc<AppState>) {
@@ -233,8 +260,10 @@ fn spawn_timer_loop(state: Arc<AppState>) {
                 core.history.sessions.push(FocusSession {
                     started_at: started,
                     duration_minutes: mins,
+                    starred: false,
                 });
                 let _ = save_json(&core.history_path, &core.history);
+                core.star_pending_session_index = Some(core.history.sessions.len() - 1);
                 core.focus_started_at = None;
                 let bm = ev
                     .timer
@@ -257,6 +286,7 @@ fn spawn_timer_loop(state: Arc<AppState>) {
         }
 
         if old_phase == Phase::Break && core.timer.phase() == Phase::Idle {
+            core.star_pending_session_index = None;
             let stats = crate::stats::calculate_stats(&core.history, Utc::now());
             let notifications_enabled = core.settings.notifications_enabled;
             let app = state.app.clone();
@@ -272,6 +302,7 @@ fn spawn_timer_loop(state: Arc<AppState>) {
 
         let new_phase = core.timer.phase();
         if old_phase == Phase::Break && new_phase == Phase::Focus {
+            core.star_pending_session_index = None;
             core.focus_started_at = Some(Utc::now());
         }
         drop(core);
@@ -352,6 +383,7 @@ pub fn run() {
             pause_timer,
             resume_timer,
             stop_timer,
+            star_current_session,
             autostart::is_autostart_enabled,
             autostart::set_autostart_enabled
         ])
@@ -381,4 +413,56 @@ pub fn run() {
             }
         }
     });
+}
+
+#[cfg(test)]
+mod star_session_tests {
+    use super::*;
+    use crate::history::{FocusSession, History};
+    use crate::state::Core;
+    use crate::timer::{Phase, Timer};
+    use chrono::Utc;
+    use std::path::PathBuf;
+
+    fn core_on_break_with_history_row() -> Core {
+        let started = Utc::now();
+        let timer = Timer::new()
+            .start_focus(1, 5, 1, false)
+            .unwrap()
+            .tick(60)
+            .timer;
+        assert_eq!(timer.phase(), Phase::Break);
+        Core {
+            timer,
+            history: History {
+                sessions: vec![FocusSession {
+                    started_at: started,
+                    duration_minutes: 1,
+                    starred: false,
+                }],
+            },
+            presets: Default::default(),
+            settings: Default::default(),
+            focus_started_at: None,
+            star_pending_session_index: Some(0),
+            history_path: PathBuf::from("unused"),
+            presets_path: PathBuf::from("unused"),
+            settings_path: PathBuf::from("unused"),
+        }
+    }
+
+    #[test]
+    fn stars_pending_session_while_on_break() {
+        let mut core = core_on_break_with_history_row();
+        try_star_current_session(&mut core).expect("star");
+        assert!(core.history.sessions[0].starred);
+    }
+
+    #[test]
+    fn star_errors_when_idle() {
+        let mut core = core_on_break_with_history_row();
+        core.timer = Timer::new();
+        let err = try_star_current_session(&mut core).unwrap_err();
+        assert!(err.contains("break") || err.contains("star"));
+    }
 }

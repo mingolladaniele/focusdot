@@ -15,6 +15,8 @@ pub struct Core {
     pub presets: PresetStore,
     pub settings: AppSettings,
     pub focus_started_at: Option<DateTime<Utc>>,
+    /// Index into `history.sessions` for the focus block whose break is active, if any.
+    pub star_pending_session_index: Option<usize>,
     pub history_path: PathBuf,
     pub presets_path: PathBuf,
     pub settings_path: PathBuf,
@@ -43,6 +45,7 @@ impl AppState {
                 presets,
                 settings,
                 focus_started_at: None,
+                star_pending_session_index: None,
                 history_path,
                 presets_path,
                 settings_path,
