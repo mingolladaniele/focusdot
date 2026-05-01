@@ -133,6 +133,10 @@ export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
   if (pause) pause.disabled = snapshot.phase === "Idle" || !snapshot.running;
   if (resume) resume.disabled = snapshot.phase === "Idle" || snapshot.running;
   if (stop) stop.disabled = snapshot.phase === "Idle";
+  const star = document.querySelector<HTMLButtonElement>("[data-testid='btn-star']");
+  if (star) {
+    star.disabled = snapshot.phase !== "Break";
+  }
 }
 
 function setPresetEditingMode(editing: boolean): void {
@@ -340,5 +344,9 @@ function bindTimerControls(): void {
   });
   stop?.addEventListener("click", async () => {
     await invoke("stop_timer");
+  });
+  const star = document.querySelector<HTMLButtonElement>("[data-testid='btn-star']");
+  star?.addEventListener("click", async () => {
+    await invoke("star_current_session");
   });
 }

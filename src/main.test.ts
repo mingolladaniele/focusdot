@@ -42,6 +42,7 @@ beforeEach(() => {
         <div class="controls">
           <button type="button" id="btn-pause" data-testid="btn-pause" class="btn btn-ghost">Pause</button>
           <button type="button" id="btn-resume" data-testid="btn-resume" class="btn btn-primary">Resume</button>
+          <button type="button" id="btn-star" data-testid="btn-star" class="btn btn-ghost" disabled>Star</button>
           <button type="button" id="btn-stop" data-testid="btn-stop" class="btn btn-ghost">Stop</button>
         </div>
       </section>
@@ -246,6 +247,102 @@ describe("settings window", () => {
     await userEvent.click(screen.getByTestId("btn-pause"));
 
     expect(invoke).toHaveBeenCalledWith("pause_timer");
+  });
+
+  it("enables star button on Break and disables on Idle", async () => {
+    invoke.mockImplementation((cmd: string) => {
+      if (cmd === "get_stats") {
+        return Promise.resolve({
+          sessionsToday: 0,
+          focusMinutesToday: 0,
+          focusMinutesThisWeek: 0,
+          currentStreakDays: 0
+        });
+      }
+      if (cmd === "list_presets") return Promise.resolve([]);
+      if (cmd === "get_app_settings") {
+        return Promise.resolve({
+          autoStartNextFocusAfterBreak: false,
+          notificationsEnabled: true
+        });
+      }
+      if (cmd === "is_autostart_enabled") return Promise.resolve(false);
+      if (cmd === "get_timer") {
+        return Promise.resolve({
+          phase: "Break",
+          running: true,
+          remaining_seconds: 120,
+          focus_minutes: 25,
+          break_minutes: 5,
+          cycles_remaining: 0,
+          auto_start_next: false
+        });
+      }
+      return Promise.resolve(undefined);
+    });
+
+    await bootstrap();
+    const star = screen.getByTestId("btn-star") as HTMLButtonElement;
+    expect(star.disabled).toBe(false);
+
+    applyTimerSnapshot({
+      phase: "Focus",
+      running: true,
+      remaining_seconds: 600,
+      focus_minutes: 25,
+      break_minutes: 5,
+      cycles_remaining: 0,
+      auto_start_next: false
+    });
+    expect(star.disabled).toBe(true);
+
+    applyTimerSnapshot({
+      phase: "Idle",
+      running: false,
+      remaining_seconds: 0,
+      focus_minutes: 0,
+      break_minutes: 0,
+      cycles_remaining: 0,
+      auto_start_next: false
+    });
+    expect(star.disabled).toBe(true);
+  });
+
+  it("invokes star_current_session when Star is clicked", async () => {
+    invoke.mockImplementation((cmd: string) => {
+      if (cmd === "get_stats") {
+        return Promise.resolve({
+          sessionsToday: 0,
+          focusMinutesToday: 0,
+          focusMinutesThisWeek: 0,
+          currentStreakDays: 0
+        });
+      }
+      if (cmd === "list_presets") return Promise.resolve([]);
+      if (cmd === "get_app_settings") {
+        return Promise.resolve({
+          autoStartNextFocusAfterBreak: false,
+          notificationsEnabled: true
+        });
+      }
+      if (cmd === "is_autostart_enabled") return Promise.resolve(false);
+      if (cmd === "get_timer") {
+        return Promise.resolve({
+          phase: "Break",
+          running: true,
+          remaining_seconds: 120,
+          focus_minutes: 25,
+          break_minutes: 5,
+          cycles_remaining: 0,
+          auto_start_next: false
+        });
+      }
+      return Promise.resolve(undefined);
+    });
+
+    await bootstrap();
+    await userEvent.click(screen.getByTestId("btn-star"));
+    expect(invoke).toHaveBeenCalledWith("star_current_session");
   });
 
   it("loads stats on bootstrap", async () => {
