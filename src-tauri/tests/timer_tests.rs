@@ -148,3 +148,51 @@ fn periodic_tick_emits_only_when_not_idle_and_running() {
     assert!(!paused_focus.running);
     assert!(!should_emit_periodic_timer_tick(&paused_focus));
 }
+
+#[test]
+fn skip_break_on_idle_errors_wrong_phase() {
+    let err = Timer::new().skip_break().expect_err("idle is not break");
+    assert_eq!(err, TimerError::WrongPhase);
+}
+
+#[test]
+fn skip_break_mid_multi_cycle_with_auto_start_goes_to_focus() {
+    let timer = Timer::new().start_focus(1, 1, 2, true).expect("starts");
+    let timer = timer.tick(60).timer; // focus completes -> break
+    assert_eq!(timer.phase(), Phase::Break);
+
+    let timer = timer.skip_break().expect("skip break");
+
+    assert_eq!(timer.phase(), Phase::Focus);
+    assert_eq!(timer.remaining_seconds(), 60);
+    assert_eq!(timer.snapshot().cycles_remaining, 0);
+    assert!(timer.is_running());
+}
+
+#[test]
+fn skip_break_on_final_break_goes_idle() {
+    let timer = Timer::new()
+        .start_focus(1, 1, 1, true)
+        .expect("starts");
+    let timer = timer.tick(60).timer; // focus -> break (cycles_remaining == 0)
+
+    let timer = timer.skip_break().expect("skip break");
+
+    assert_eq!(timer.phase(), Phase::Idle);
+    assert!(!timer.is_running());
+    assert_eq!(timer.remaining_seconds(), 0);
+}
+
+#[test]
+fn skip_break_while_break_paused_starts_focus_running() {
+    let timer = Timer::new().start_focus(1, 1, 2, true).expect("starts");
+    let timer = timer.tick(60).timer; // break, running
+    let timer = timer.pause().expect("pause break");
+    assert_eq!(timer.phase(), Phase::Break);
+    assert!(!timer.is_running());
+
+    let timer = timer.skip_break().expect("skip break");
+
+    assert_eq!(timer.phase(), Phase::Focus);
+    assert!(timer.is_running());
+}

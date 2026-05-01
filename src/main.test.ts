@@ -42,6 +42,7 @@ beforeEach(() => {
         <div class="controls">
           <button type="button" id="btn-pause" data-testid="btn-pause" class="btn btn-ghost">Pause</button>
           <button type="button" id="btn-resume" data-testid="btn-resume" class="btn btn-primary">Resume</button>
+          <button type="button" id="btn-skip-break" data-testid="btn-skip-break" class="btn btn-ghost">Start focus now</button>
           <button type="button" id="btn-stop" data-testid="btn-stop" class="btn btn-ghost">Stop</button>
         </div>
       </section>
@@ -175,6 +176,21 @@ describe("settings window", () => {
     expect(screen.getByTestId("timer-phase").textContent).toBe("Focus session");
     expect(screen.getByTestId("timer-display").textContent).toBe("02:05");
     expect(screen.getByTestId("brand-dot").getAttribute("data-phase")).toBe("Focus");
+    expect((screen.getByTestId("btn-skip-break") as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("enables Start focus now only during Break", () => {
+    applyTimerSnapshot({
+      phase: "Break",
+      running: true,
+      remaining_seconds: 300,
+      focus_minutes: 25,
+      break_minutes: 5,
+      cycles_remaining: 1,
+      auto_start_next: true
+    });
+
+    expect((screen.getByTestId("btn-skip-break") as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("updates status pill and progress rail from snapshot", () => {
@@ -246,6 +262,44 @@ describe("settings window", () => {
     await userEvent.click(screen.getByTestId("btn-pause"));
 
     expect(invoke).toHaveBeenCalledWith("pause_timer");
+  });
+
+  it("invokes skip_break when Start focus now is clicked", async () => {
+    invoke.mockImplementation((cmd: string) => {
+      if (cmd === "get_stats") {
+        return Promise.resolve({
+          sessionsToday: 0,
+          focusMinutesToday: 0,
+          focusMinutesThisWeek: 0,
+          currentStreakDays: 0
+        });
+      }
+      if (cmd === "list_presets") return Promise.resolve([]);
+      if (cmd === "get_app_settings") {
+        return Promise.resolve({
+          autoStartNextFocusAfterBreak: false,
+          notificationsEnabled: true
+        });
+      }
+      if (cmd === "is_autostart_enabled") return Promise.resolve(false);
+      if (cmd === "get_timer") {
+        return Promise.resolve({
+          phase: "Break",
+          running: true,
+          remaining_seconds: 300,
+          focus_minutes: 25,
+          break_minutes: 5,
+          cycles_remaining: 0,
+          auto_start_next: false
+        });
+      }
+      return Promise.resolve(undefined);
+    });
+
+    await bootstrap();
+    await userEvent.click(screen.getByTestId("btn-skip-break"));
+
+    expect(invoke).toHaveBeenCalledWith("skip_break");
   });
 
   it("loads stats on bootstrap", async () => {

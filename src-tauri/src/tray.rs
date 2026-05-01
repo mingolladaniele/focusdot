@@ -80,6 +80,17 @@ pub fn build_root_menu<R: Runtime>(
 
     let mut items: Vec<Box<dyn IsMenuItem<R>>> = Vec::new();
 
+    if phase == Phase::Break {
+        let skip = MenuItem::with_id(
+            handle,
+            "skip_break",
+            "Start focus now (skip break)",
+            true,
+            None::<&str>,
+        )?;
+        items.push(Box::new(skip));
+    }
+
     if phase == Phase::Idle {
         let preset_items: Vec<MenuItem<R>> = presets_snapshot
             .iter()
@@ -181,6 +192,33 @@ pub fn handle_menu_event<R: Runtime>(
                 c.focus_started_at = None;
             }
             let _ = set_tray_icon_phase(app, Phase::Idle);
+            let _ = refresh_tray_menu(app, state);
+            if let Ok(c) = state.inner.lock() {
+                let snap = c.timer.snapshot();
+                drop(c);
+                let _ = app.emit("timer-tick", &snap);
+            }
+        }
+        "skip_break" => {
+            let phase = {
+                let mut c = match state.inner.lock() {
+                    Ok(g) => g,
+                    Err(_) => return,
+                };
+                match c.timer.clone().skip_break() {
+                    Ok(t) => {
+                        c.timer = t;
+                        match c.timer.phase() {
+                            Phase::Focus => c.focus_started_at = Some(Utc::now()),
+                            Phase::Idle => c.focus_started_at = None,
+                            Phase::Break => {}
+                        }
+                        c.timer.phase()
+                    }
+                    Err(_) => return,
+                }
+            };
+            let _ = set_tray_icon_phase(app, phase);
             let _ = refresh_tray_menu(app, state);
             if let Ok(c) = state.inner.lock() {
                 let snap = c.timer.snapshot();
