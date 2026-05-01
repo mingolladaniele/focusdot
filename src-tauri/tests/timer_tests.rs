@@ -99,14 +99,61 @@ fn break_completion_starts_next_focus_when_auto_cycle_enabled() {
 }
 
 #[test]
-fn break_completion_returns_to_idle_after_last_cycle() {
-    let timer = Timer::new()
-        .start_focus(1, 1, 1, true) // 1 cycle only
-        .expect("starts");
-    let timer = timer.tick(60).timer; // focus -> break
-    let timer = timer.tick(60).timer; // break -> idle (no more cycles)
-    assert_eq!(timer.phase(), Phase::Idle);
-    assert!(!timer.is_running());
+fn break_completion_single_cycle_auto_start_starts_next_focus() {
+    let timer = Timer::new().start_focus(1, 1, 1, true).expect("starts");
+    let after_focus = timer.tick(60);
+    assert_eq!(after_focus.timer.phase(), Phase::Break);
+
+    let after_break = after_focus.timer.tick(60);
+    assert_eq!(after_break.timer.phase(), Phase::Focus);
+    assert_eq!(after_break.timer.remaining_seconds(), 60);
+    assert!(after_break.timer.is_running());
+}
+
+#[test]
+fn break_completion_multi_cycle_auto_start_stops_after_final_break() {
+    let timer = Timer::new().start_focus(1, 1, 2, true).expect("starts");
+    let t = timer.tick(60).timer; // -> break
+    let t = t.tick(60).timer; // -> focus (auto)
+    let t = t.tick(60).timer; // -> break
+    let t = t.tick(60).timer; // -> idle (final break, no more rounds)
+    assert_eq!(t.phase(), Phase::Idle);
+    assert!(!t.is_running());
+}
+
+#[test]
+fn single_cycle_auto_start_repeats_more_than_once() {
+    let mut t = Timer::new().start_focus(1, 1, 1, true).unwrap();
+    for _ in 0..2 {
+        t = t.tick(60).timer; // end focus -> break
+        assert_eq!(t.phase(), Phase::Break);
+        t = t.tick(60).timer; // end break -> focus again
+        assert_eq!(t.phase(), Phase::Focus);
+    }
+}
+
+#[test]
+fn with_auto_start_next_changes_break_completion_without_idle_reset() {
+    let timer = Timer::new().start_focus(1, 1, 1, true).expect("starts");
+    let on_break = timer.tick(60).timer;
+    assert_eq!(on_break.phase(), Phase::Break);
+
+    let toggled_off = on_break.with_auto_start_next(false);
+    let after_break = toggled_off.tick(60).timer;
+    assert_eq!(after_break.phase(), Phase::Idle);
+    assert!(!after_break.is_running());
+}
+
+#[test]
+fn with_auto_start_next_turning_on_enables_auto_after_break() {
+    let timer = Timer::new().start_focus(1, 1, 1, false).expect("starts");
+    let on_break = timer.tick(60).timer;
+    assert_eq!(on_break.phase(), Phase::Break);
+
+    let toggled_on = on_break.with_auto_start_next(true);
+    let after_break = toggled_on.tick(60).timer;
+    assert_eq!(after_break.phase(), Phase::Focus);
+    assert!(after_break.is_running());
 }
 
 #[test]

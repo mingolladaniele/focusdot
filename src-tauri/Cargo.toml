@@ -1,6 +1,6 @@
 [package]
 name = "focusdot"
-version = "0.1.0"
+version = "0.1.1"
 description = "Minimalist system tray Pomodoro timer (focusdot)"
 authors = ["focusdot"]
 edition = "2021"
