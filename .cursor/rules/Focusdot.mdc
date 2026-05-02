@@ -1,0 +1,37 @@
+---
+globs: **/focusdot/**
+alwaysApply: false
+---
+
+---
+description: FocusDot project structure, dev/test commands, and development guardrails
+alwaysApply: false
+---
+# FocusDot Development Rule
+
+## Codebase structure
+- `src/`: Vite + TypeScript dashboard UI.
+- `src-tauri/src/`: Rust backend (timer engine, tray integration, notifications, persistence, app commands).
+- `src-tauri/tests/`: Rust integration/unit tests.
+- `assets/`: icons and media assets.
+- `scripts/`: PowerShell wrappers used by npm scripts for Tauri and Cargo on Windows.
+
+## Test commands
+- Full test suite (frontend + Rust): `npm test`
+- Frontend tests only: `npm run test:frontend`
+- Rust tests only: `npm run test:rust`
+- Type check only: `npm run typecheck`
+
+## Development guidelines
+- Settings UX changes must stay aligned with the app’s existing UX: same typography, spacing, colors, and component patterns as the rest of the dashboard (no one-off styles that diverge from the established design system).
+- Keep UI logic in `src/` and timer/system behavior in `src-tauri/src/`; avoid crossing responsibilities.
+- For behavior changes, add or update tests first in the relevant suite (`src/*.test.ts` or `src-tauri/tests/*.rs`).
+- Prefer small, focused changes; avoid unrelated refactors in the same PR.
+- Preserve existing command/script contracts in `package.json` unless intentionally changing the developer workflow.
+- Verify before finishing: run `npm run typecheck` and `npm test` for user-facing or behavior-impacting changes.
+
+## Git workflow
+- Always create a dedicated branch for changes; do not commit directly on `main`.
+- Implementation plans under `docs/superpowers/plans/` must explicitly name a branch for the GitHub issue (convention: `issue-<number>-<short-slug>`) and tell implementers to create and use that branch before the first commit.
+- Never push commits to `main` from the agent or local workflow; integrate via PR or the project’s normal merge path.
+- Never use `git push --force` (or other force-push flags that overwrite remote history).
