@@ -220,6 +220,32 @@ fn stop_timer(
     Ok(snapshot)
 }
 
+#[tauri::command]
+fn skip_break(
+    app: AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+) -> Result<TimerSnapshot, String> {
+    let snapshot = {
+        let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+        let timer = core
+            .timer
+            .clone()
+            .skip_break()
+            .map_err(|e| e.to_string())?;
+        core.timer = timer;
+        match core.timer.phase() {
+            Phase::Focus => core.focus_started_at = Some(Utc::now()),
+            Phase::Idle => core.focus_started_at = None,
+            Phase::Break => {}
+        }
+        core.timer.snapshot()
+    };
+    set_tray_icon_phase(&app, snapshot.phase).map_err(|e| e.to_string())?;
+    refresh_tray_menu(&app, &*state).map_err(|e| e.to_string())?;
+    let _ = app.emit("timer-tick", &snapshot);
+    Ok(snapshot)
+}
+
 fn spawn_timer_loop(state: Arc<AppState>) {
     thread::spawn(move || loop {
         thread::sleep(Duration::from_secs(1));
@@ -357,6 +383,7 @@ pub fn run() {
             pause_timer,
             resume_timer,
             stop_timer,
+            skip_break,
             autostart::is_autostart_enabled,
             autostart::set_autostart_enabled
         ])

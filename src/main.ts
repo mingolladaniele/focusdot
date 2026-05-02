@@ -92,6 +92,7 @@ export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
   const dot = document.querySelector<HTMLElement>("[data-testid='brand-dot']");
   const pause = document.querySelector<HTMLButtonElement>("[data-testid='btn-pause']");
   const resume = document.querySelector<HTMLButtonElement>("[data-testid='btn-resume']");
+  const skipBreak = document.querySelector<HTMLButtonElement>("[data-testid='btn-skip-break']");
   const stop = document.querySelector<HTMLButtonElement>("[data-testid='btn-stop']");
 
   if (phaseEl) {
@@ -132,6 +133,7 @@ export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
   }
   if (pause) pause.disabled = snapshot.phase === "Idle" || !snapshot.running;
   if (resume) resume.disabled = snapshot.phase === "Idle" || snapshot.running;
+  if (skipBreak) skipBreak.disabled = snapshot.phase !== "Break";
   if (stop) stop.disabled = snapshot.phase === "Idle";
 }
 
@@ -331,12 +333,16 @@ async function bindAutostart(): Promise<void> {
 function bindTimerControls(): void {
   const pause = document.querySelector<HTMLButtonElement>("[data-testid='btn-pause']");
   const resume = document.querySelector<HTMLButtonElement>("[data-testid='btn-resume']");
+  const skipBreak = document.querySelector<HTMLButtonElement>("[data-testid='btn-skip-break']");
   const stop = document.querySelector<HTMLButtonElement>("[data-testid='btn-stop']");
   pause?.addEventListener("click", async () => {
     await invoke("pause_timer");
   });
   resume?.addEventListener("click", async () => {
     await invoke("resume_timer");
+  });
+  skipBreak?.addEventListener("click", async () => {
+    await invoke("skip_break");
   });
   stop?.addEventListener("click", async () => {
     await invoke("stop_timer");
