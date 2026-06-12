@@ -159,6 +159,7 @@ fn start_preset(
                 preset.break_minutes,
                 preset.cycles,
                 auto_next,
+                false,
             )
             .map_err(|e| e.to_string())?;
         core.timer = timer;
@@ -236,7 +237,7 @@ fn skip_break(
         match core.timer.phase() {
             Phase::Focus => core.focus_started_at = Some(Utc::now()),
             Phase::Idle => core.focus_started_at = None,
-            Phase::Break => {}
+            Phase::Break | Phase::Overtime => {}
         }
         core.timer.snapshot()
     };

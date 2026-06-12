@@ -53,7 +53,7 @@ pub fn window_title_icon() -> Image<'static> {
 pub fn icon_for_phase(phase: Phase) -> Image<'static> {
     match phase {
         Phase::Idle => circular_icon((255, 255, 255)),
-        Phase::Focus => circular_icon((43, 182, 115)),
+        Phase::Focus | Phase::Overtime => circular_icon((43, 182, 115)),
         Phase::Break => circular_icon((74, 144, 226)),
     }
 }
@@ -63,6 +63,7 @@ fn tray_tooltip(phase: Phase) -> &'static str {
     match phase {
         Phase::Idle => "focusdot · Idle",
         Phase::Focus => "focusdot · Focus",
+        Phase::Overtime => "focusdot · Overtime",
         Phase::Break => "focusdot · Break",
     }
 }
@@ -211,7 +212,7 @@ pub fn handle_menu_event<R: Runtime>(
                         match c.timer.phase() {
                             Phase::Focus => c.focus_started_at = Some(Utc::now()),
                             Phase::Idle => c.focus_started_at = None,
-                            Phase::Break => {}
+                            Phase::Break | Phase::Overtime => {}
                         }
                         c.timer.phase()
                     }
@@ -236,6 +237,7 @@ pub fn handle_menu_event<R: Runtime>(
                             preset.break_minutes,
                             preset.cycles,
                             c.settings.auto_start_next_focus_after_break,
+                            false,
                         ) {
                             c.timer = t;
                             c.focus_started_at = Some(Utc::now());
