@@ -70,10 +70,10 @@ beforeEach(() => {
           </div>
         </div>
       </section>
-      <section class="card collapsible-card" aria-labelledby="startup-title">
-        <details class="collapsible" data-testid="app-section">
+      <section class="card collapsible-card" aria-labelledby="settings-title">
+        <details class="collapsible" data-testid="settings-section">
           <summary class="collapsible-trigger section-head">
-            <h2 id="startup-title">App</h2>
+            <h2 id="settings-title">Settings</h2>
           </summary>
           <div class="collapsible-body">
             <div class="toggle-list">
@@ -227,17 +227,17 @@ describe("dashboard layout", () => {
     expect(statsIdx).toBe(timerIdx + 1);
   });
 
-  it("keeps app and presets collapsed by default", () => {
-    const app = screen.getByTestId("app-section") as HTMLDetailsElement;
+  it("keeps settings and presets collapsed by default", () => {
+    const settings = screen.getByTestId("settings-section") as HTMLDetailsElement;
     const presets = screen.getByTestId("presets-section") as HTMLDetailsElement;
-    expect(app.open).toBe(false);
+    expect(settings.open).toBe(false);
     expect(presets.open).toBe(false);
   });
 
-  it("expands app section when summary is clicked", async () => {
-    const app = screen.getByTestId("app-section") as HTMLDetailsElement;
-    await userEvent.click(app.querySelector("summary")!);
-    expect(app.open).toBe(true);
+  it("expands settings section when summary is clicked", async () => {
+    const settings = screen.getByTestId("settings-section") as HTMLDetailsElement;
+    await userEvent.click(settings.querySelector("summary")!);
+    expect(settings.open).toBe(true);
   });
 });
 
