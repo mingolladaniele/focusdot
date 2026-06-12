@@ -350,3 +350,13 @@ fn periodic_tick_emits_during_running_overtime() {
     assert_eq!(snap.phase, Phase::Overtime);
     assert!(should_emit_periodic_timer_tick(&snap));
 }
+
+#[test]
+fn end_overtime_start_break_errors_when_not_overtime() {
+    let err = Timer::new()
+        .start_focus(1, 5, 1, false, false)
+        .expect("start")
+        .end_overtime_start_break()
+        .expect_err("not overtime");
+    assert_eq!(err, TimerError::WrongPhase);
+}

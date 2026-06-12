@@ -24,7 +24,7 @@ use crate::presets::{Preset, PresetInput};
 use crate::state::AppState;
 use crate::stats::Stats;
 use crate::storage::save_json;
-use crate::timer::{should_emit_periodic_timer_tick, Phase, TimerSnapshot};
+use crate::timer::{should_emit_periodic_timer_tick, total_focus_duration_minutes, Phase, TimerSnapshot};
 use crate::tray::{install_tray, refresh_tray_menu, set_tray_icon_phase, window_title_icon};
 use crate::window_layout::show_main_window_bottom_right;
 
@@ -32,6 +32,24 @@ fn data_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     app.path()
         .resolve("FocusDot", BaseDirectory::AppData)
         .map_err(|e| e.to_string())
+}
+
+pub(crate) fn finalize_overtime_session(core: &mut crate::state::Core) -> TimerSnapshot {
+    let snap = core.timer.snapshot();
+    let started = core.focus_started_at.unwrap_or_else(Utc::now);
+    let duration = total_focus_duration_minutes(snap.focus_minutes, snap.overtime_seconds);
+    core.history.sessions.push(FocusSession {
+        started_at: started,
+        duration_minutes: duration,
+    });
+    let _ = save_json(&core.history_path, &core.history);
+    core.focus_started_at = None;
+    core.timer = core
+        .timer
+        .clone()
+        .end_overtime_start_break()
+        .expect("overtime -> break");
+    core.timer.snapshot()
 }
 
 #[tauri::command]
@@ -211,11 +229,16 @@ fn stop_timer(
 ) -> Result<TimerSnapshot, String> {
     let snapshot = {
         let mut core = state.inner.lock().map_err(|e| e.to_string())?;
-        core.timer = core.timer.clone().stop();
-        core.focus_started_at = None;
-        core.timer.snapshot()
+        if core.timer.phase() == Phase::Overtime {
+            finalize_overtime_session(&mut core)
+        } else {
+            core.timer = core.timer.clone().stop();
+            core.focus_started_at = None;
+            core.timer.snapshot()
+        }
     };
-    set_tray_icon_phase(&app, Phase::Idle).map_err(|e| e.to_string())?;
+    let phase = snapshot.phase;
+    set_tray_icon_phase(&app, phase).map_err(|e| e.to_string())?;
     refresh_tray_menu(&app, &*state).map_err(|e| e.to_string())?;
     let _ = app.emit("timer-tick", &snapshot);
     Ok(snapshot)

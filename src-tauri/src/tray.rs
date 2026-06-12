@@ -188,11 +188,21 @@ pub fn handle_menu_event<R: Runtime>(
             }
         }
         "stop" => {
-            if let Ok(mut c) = state.inner.lock() {
-                c.timer = c.timer.clone().stop();
-                c.focus_started_at = None;
-            }
-            let _ = set_tray_icon_phase(app, Phase::Idle);
+            let phase = {
+                let mut c = match state.inner.lock() {
+                    Ok(g) => g,
+                    Err(_) => return,
+                };
+                if c.timer.phase() == Phase::Overtime {
+                    let snap = crate::finalize_overtime_session(&mut c);
+                    snap.phase
+                } else {
+                    c.timer = c.timer.clone().stop();
+                    c.focus_started_at = None;
+                    Phase::Idle
+                }
+            };
+            let _ = set_tray_icon_phase(app, phase);
             let _ = refresh_tray_menu(app, state);
             if let Ok(c) = state.inner.lock() {
                 let snap = c.timer.snapshot();
