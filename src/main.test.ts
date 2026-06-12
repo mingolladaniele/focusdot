@@ -68,6 +68,14 @@ beforeEach(() => {
             <span class="stat-value" data-testid="focus-this-week">0h 0m</span>
             <span class="stat-label">This week</span>
           </div>
+          <div class="stat-tile">
+            <span class="stat-value" data-testid="focus-this-month">0h 0m</span>
+            <span class="stat-label">This month</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-value" data-testid="focus-this-year">0h 0m</span>
+            <span class="stat-label">This year</span>
+          </div>
         </div>
       </section>
       <section class="card collapsible-card" aria-labelledby="settings-title">
@@ -316,6 +324,8 @@ describe("settings window", () => {
           sessionsToday: 0,
           focusMinutesToday: 0,
           focusMinutesThisWeek: 0,
+          focusMinutesThisMonth: 0,
+          focusMinutesThisYear: 0,
           currentStreakDays: 0
         });
       }
@@ -356,6 +366,8 @@ describe("settings window", () => {
           sessionsToday: 0,
           focusMinutesToday: 0,
           focusMinutesThisWeek: 0,
+          focusMinutesThisMonth: 0,
+          focusMinutesThisYear: 0,
           currentStreakDays: 0
         });
       }
@@ -396,6 +408,8 @@ describe("settings window", () => {
           sessionsToday: 2,
           focusMinutesToday: 50,
           focusMinutesThisWeek: 80,
+          focusMinutesThisMonth: 320,
+          focusMinutesThisYear: 1500,
           currentStreakDays: 3
         });
       }
@@ -429,6 +443,8 @@ describe("settings window", () => {
     expect(screen.getByTestId("focus-today").textContent).toBe("50m");
     expect(screen.getByTestId("streak-days").textContent).toBe("3");
     expect(screen.getByTestId("focus-this-week").textContent).toBe("1h 20m");
+    expect(screen.getByTestId("focus-this-month").textContent).toBe("5h 20m");
+    expect(screen.getByTestId("focus-this-year").textContent).toBe("25h 0m");
     expect(invoke).toHaveBeenCalledWith("get_stats");
   });
 
@@ -447,6 +463,8 @@ describe("settings window", () => {
           sessionsToday: 1,
           focusMinutesToday: 25,
           focusMinutesThisWeek: 25,
+          focusMinutesThisMonth: 0,
+          focusMinutesThisYear: 0,
           currentStreakDays: 1
         });
       }
@@ -508,6 +526,8 @@ describe("settings window", () => {
           sessionsToday: 2,
           focusMinutesToday: 50,
           focusMinutesThisWeek: 50,
+          focusMinutesThisMonth: 0,
+          focusMinutesThisYear: 0,
           currentStreakDays: 2
         });
       }
@@ -563,6 +583,8 @@ describe("settings window", () => {
           sessionsToday: 0,
           focusMinutesToday: 0,
           focusMinutesThisWeek: 0,
+          focusMinutesThisMonth: 0,
+          focusMinutesThisYear: 0,
           currentStreakDays: 0
         });
       }
@@ -613,6 +635,8 @@ describe("settings window", () => {
           sessionsToday: 0,
           focusMinutesToday: 0,
           focusMinutesThisWeek: 0,
+          focusMinutesThisMonth: 0,
+          focusMinutesThisYear: 0,
           currentStreakDays: 0
         });
       }

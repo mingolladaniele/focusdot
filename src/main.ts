@@ -3,9 +3,9 @@ import { listen } from "@tauri-apps/api/event";
 import { parsePresetForm } from "./presets";
 import {
   statFocusTodayValue,
+  statPeriodMinutesValue,
   statSessionsTodayValue,
-  statStreakValue,
-  statWeekValue
+  statStreakValue
 } from "./stats";
 
 export type PresetRow = {
@@ -20,6 +20,8 @@ type StatsResponse = {
   sessionsToday: number;
   focusMinutesToday: number;
   focusMinutesThisWeek: number;
+  focusMinutesThisMonth: number;
+  focusMinutesThisYear: number;
   currentStreakDays: number;
 };
 
@@ -198,10 +200,14 @@ async function loadStats(): Promise<void> {
   const stats = await invoke<StatsResponse>("get_stats");
   const sessionsToday = document.querySelector<HTMLElement>("[data-testid='sessions-today']");
   const focusThisWeek = document.querySelector<HTMLElement>("[data-testid='focus-this-week']");
+  const focusThisMonth = document.querySelector<HTMLElement>("[data-testid='focus-this-month']");
+  const focusThisYear = document.querySelector<HTMLElement>("[data-testid='focus-this-year']");
   const focusToday = document.querySelector<HTMLElement>("[data-testid='focus-today']");
   const streak = document.querySelector<HTMLElement>("[data-testid='streak-days']");
   if (sessionsToday) sessionsToday.textContent = statSessionsTodayValue(stats.sessionsToday);
-  if (focusThisWeek) focusThisWeek.textContent = statWeekValue(stats.focusMinutesThisWeek);
+  if (focusThisWeek) focusThisWeek.textContent = statPeriodMinutesValue(stats.focusMinutesThisWeek);
+  if (focusThisMonth) focusThisMonth.textContent = statPeriodMinutesValue(stats.focusMinutesThisMonth);
+  if (focusThisYear) focusThisYear.textContent = statPeriodMinutesValue(stats.focusMinutesThisYear);
   if (focusToday) focusToday.textContent = statFocusTodayValue(stats.focusMinutesToday);
   if (streak) streak.textContent = statStreakValue(stats.currentStreakDays);
 }
