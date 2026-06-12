@@ -85,6 +85,10 @@ main {
   background: var(--tray-focus);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--tray-focus) 28%, transparent);
 }
+.brand-dot[data-phase="Overtime"] {
+  background: var(--tray-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tray-focus) 28%, transparent);
+}
 .brand-dot[data-phase="Break"] {
   background: var(--tray-break);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--tray-break) 28%, transparent);
@@ -127,6 +131,17 @@ main {
   background: var(--tray-focus);
 }
 .status-pill[data-phase="Focus"][data-running="true"] .status-pulse {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.status-pill[data-phase="Overtime"] {
+  color: color-mix(in oklab, var(--tray-focus) 85%, var(--text));
+  background: color-mix(in srgb, var(--tray-focus) 16%, oklch(0.20 0.005 250));
+  border-color: color-mix(in srgb, var(--tray-focus) 38%, var(--line-soft));
+}
+.status-pill[data-phase="Overtime"] .status-pulse {
+  background: var(--tray-focus);
+}
+.status-pill[data-phase="Overtime"][data-running="true"] .status-pulse {
   animation: pulse 1.6s ease-in-out infinite;
 }
 .status-pill[data-phase="Break"] {

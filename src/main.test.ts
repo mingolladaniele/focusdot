@@ -104,6 +104,16 @@ beforeEach(() => {
           </label>
           <label class="toggle">
             <span class="toggle-text">
+              <span class="toggle-label">Overtime tracking</span>
+              <span class="toggle-hint">When a focus block ends, keep counting extra time until you press Stop.</span>
+            </span>
+            <span class="switch">
+              <input type="checkbox" id="overtime-tracking" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+          <label class="toggle">
+            <span class="toggle-text">
               <span class="toggle-label">Session notifications</span>
               <span class="toggle-hint">Desktop alerts when a focus or break block ends.</span>
             </span>
@@ -139,7 +149,8 @@ describe("shouldRefreshStatsAfterTick", () => {
     focus_minutes: 25,
     break_minutes: 5,
     cycles_remaining: 0,
-    auto_start_next: false
+    auto_start_next: false,
+    overtime_seconds: 0
   });
 
   const breakSnap = (): TimerSnapshot => ({
@@ -149,15 +160,50 @@ describe("shouldRefreshStatsAfterTick", () => {
     focus_minutes: 25,
     break_minutes: 5,
     cycles_remaining: 0,
-    auto_start_next: false
+    auto_start_next: false,
+    overtime_seconds: 0
   });
 
-  it("returns true only when previous Focus and payload Break", () => {
+  it("returns true when previous Focus or Overtime and payload Break", () => {
     expect(shouldRefreshStatsAfterTick("Focus", breakSnap())).toBe(true);
+    expect(shouldRefreshStatsAfterTick("Overtime", breakSnap())).toBe(true);
     expect(shouldRefreshStatsAfterTick(undefined, breakSnap())).toBe(false);
     expect(shouldRefreshStatsAfterTick("Focus", focusSnap())).toBe(false);
     expect(shouldRefreshStatsAfterTick("Break", focusSnap())).toBe(false);
     expect(shouldRefreshStatsAfterTick("Idle", focusSnap())).toBe(false);
+  });
+});
+
+describe("overtime UI", () => {
+  it("shows +MM:SS and Overtime label during overtime", () => {
+    applyTimerSnapshot({
+      phase: "Overtime",
+      running: true,
+      remaining_seconds: 0,
+      focus_minutes: 25,
+      break_minutes: 5,
+      cycles_remaining: 0,
+      auto_start_next: false,
+      overtime_seconds: 125
+    });
+
+    expect(screen.getByTestId("timer-phase").textContent).toBe("Overtime");
+    expect(screen.getByTestId("timer-display").textContent).toBe("+02:05");
+    expect(screen.getByTestId("brand-dot").getAttribute("data-phase")).toBe("Overtime");
+    expect((screen.getByTestId("btn-stop") as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("refreshes stats when overtime ends into break", () => {
+    expect(shouldRefreshStatsAfterTick("Overtime", {
+      phase: "Break",
+      running: true,
+      remaining_seconds: 300,
+      focus_minutes: 25,
+      break_minutes: 5,
+      cycles_remaining: 0,
+      auto_start_next: false,
+      overtime_seconds: 0
+    })).toBe(true);
   });
 });
 
@@ -170,7 +216,8 @@ describe("settings window", () => {
       focus_minutes: 25,
       break_minutes: 5,
       cycles_remaining: 0,
-      auto_start_next: false
+      auto_start_next: false,
+      overtime_seconds: 0
     });
 
     expect(screen.getByTestId("timer-phase").textContent).toBe("Focus session");
@@ -187,7 +234,8 @@ describe("settings window", () => {
       focus_minutes: 25,
       break_minutes: 5,
       cycles_remaining: 1,
-      auto_start_next: true
+      auto_start_next: true,
+      overtime_seconds: 0
     });
 
     expect((screen.getByTestId("btn-skip-break") as HTMLButtonElement).disabled).toBe(false);
@@ -215,7 +263,8 @@ describe("settings window", () => {
       focus_minutes: 25,
       break_minutes: 5,
       cycles_remaining: 0,
-      auto_start_next: false
+      auto_start_next: false,
+      overtime_seconds: 0
     });
 
     const pill = screen.getByTestId("status-pill");
@@ -240,7 +289,8 @@ describe("settings window", () => {
       if (cmd === "get_app_settings") {
         return Promise.resolve({
           autoStartNextFocusAfterBreak: false,
-          notificationsEnabled: true
+          notificationsEnabled: true,
+          overtimeTrackingEnabled: false
         });
       }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
@@ -252,7 +302,8 @@ describe("settings window", () => {
           focus_minutes: 25,
           break_minutes: 5,
           cycles_remaining: 0,
-          auto_start_next: false
+          auto_start_next: false,
+          overtime_seconds: 0
         });
       }
       return Promise.resolve(undefined);
@@ -278,7 +329,8 @@ describe("settings window", () => {
       if (cmd === "get_app_settings") {
         return Promise.resolve({
           autoStartNextFocusAfterBreak: false,
-          notificationsEnabled: true
+          notificationsEnabled: true,
+          overtimeTrackingEnabled: false
         });
       }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
@@ -290,7 +342,8 @@ describe("settings window", () => {
           focus_minutes: 25,
           break_minutes: 5,
           cycles_remaining: 0,
-          auto_start_next: false
+          auto_start_next: false,
+          overtime_seconds: 0
         });
       }
       return Promise.resolve(undefined);
@@ -316,7 +369,8 @@ describe("settings window", () => {
       if (cmd === "get_app_settings") {
         return Promise.resolve({
           autoStartNextFocusAfterBreak: false,
-          notificationsEnabled: true
+          notificationsEnabled: true,
+          overtimeTrackingEnabled: false
         });
       }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
@@ -328,7 +382,8 @@ describe("settings window", () => {
           focus_minutes: 0,
           break_minutes: 0,
           cycles_remaining: 0,
-          auto_start_next: false
+          auto_start_next: false,
+          overtime_seconds: 0
         });
       }
       return Promise.resolve(undefined);
@@ -365,7 +420,8 @@ describe("settings window", () => {
       if (cmd === "get_app_settings") {
         return Promise.resolve({
           autoStartNextFocusAfterBreak: false,
-          notificationsEnabled: true
+          notificationsEnabled: true,
+          overtimeTrackingEnabled: false
         });
       }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
@@ -377,7 +433,8 @@ describe("settings window", () => {
           focus_minutes: 25,
           break_minutes: 5,
           cycles_remaining: 0,
-          auto_start_next: false
+          auto_start_next: false,
+          overtime_seconds: 0
         });
       }
       return Promise.resolve(undefined);
@@ -394,7 +451,8 @@ describe("settings window", () => {
         focus_minutes: 25,
         break_minutes: 5,
         cycles_remaining: 0,
-        auto_start_next: false
+        auto_start_next: false,
+        overtime_seconds: 0
       }
     });
 
@@ -423,7 +481,8 @@ describe("settings window", () => {
       if (cmd === "get_app_settings") {
         return Promise.resolve({
           autoStartNextFocusAfterBreak: false,
-          notificationsEnabled: true
+          notificationsEnabled: true,
+          overtimeTrackingEnabled: false
         });
       }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
@@ -435,7 +494,8 @@ describe("settings window", () => {
           focus_minutes: 25,
           break_minutes: 5,
           cycles_remaining: 0,
-          auto_start_next: false
+          auto_start_next: false,
+          overtime_seconds: 0
         });
       }
       return Promise.resolve(undefined);
@@ -452,7 +512,8 @@ describe("settings window", () => {
         focus_minutes: 25,
         break_minutes: 5,
         cycles_remaining: 0,
-        auto_start_next: false
+        auto_start_next: false,
+        overtime_seconds: 0
       }
     });
 
@@ -475,7 +536,8 @@ describe("settings window", () => {
       if (cmd === "get_app_settings") {
         return Promise.resolve({
           autoStartNextFocusAfterBreak: false,
-          notificationsEnabled: true
+          notificationsEnabled: true,
+          overtimeTrackingEnabled: false
         });
       }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
@@ -487,7 +549,8 @@ describe("settings window", () => {
           focus_minutes: 0,
           break_minutes: 0,
           cycles_remaining: 0,
-          auto_start_next: false
+          auto_start_next: false,
+          overtime_seconds: 0
         });
       }
       return Promise.resolve(undefined);
@@ -523,7 +586,8 @@ describe("settings window", () => {
       if (cmd === "get_app_settings") {
         return Promise.resolve({
           autoStartNextFocusAfterBreak: false,
-          notificationsEnabled: true
+          notificationsEnabled: true,
+          overtimeTrackingEnabled: false
         });
       }
       if (cmd === "is_autostart_enabled") return Promise.resolve(false);
@@ -535,7 +599,8 @@ describe("settings window", () => {
           focus_minutes: 0,
           break_minutes: 0,
           cycles_remaining: 0,
-          auto_start_next: false
+          auto_start_next: false,
+          overtime_seconds: 0
         });
       }
       return Promise.resolve(undefined);
