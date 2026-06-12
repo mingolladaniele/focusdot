@@ -19,7 +19,7 @@ use tauri::path::BaseDirectory;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::history::{FocusSession, History};
-use crate::notifications::{notify_break_complete, notify_focus_complete};
+use crate::notifications::{notify_break_complete, notify_focus_complete, notify_overtime_started};
 use crate::presets::{Preset, PresetInput};
 use crate::state::AppState;
 use crate::stats::Stats;
@@ -260,6 +260,18 @@ fn spawn_timer_loop(state: Arc<AppState>) {
         let snapshot = core.timer.snapshot();
 
         if let Some(ev) = tick_result.event {
+            if ev.entered_overtime {
+                let notifications_enabled = core.settings.notifications_enabled;
+                let app = state.app.clone();
+                drop(core);
+                if notifications_enabled {
+                    let _ = notify_overtime_started(&app);
+                }
+                let _ = set_tray_icon_phase(&app, Phase::Overtime);
+                let _ = refresh_tray_menu(&app, &state);
+                let _ = app.emit("timer-tick", &snapshot);
+                continue;
+            }
             if let Some(mins) = ev.completed_focus_minutes {
                 let started = core.focus_started_at.unwrap_or_else(Utc::now);
                 core.history.sessions.push(FocusSession {

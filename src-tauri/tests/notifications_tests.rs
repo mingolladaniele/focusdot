@@ -38,3 +38,12 @@ fn break_message_is_short_and_includes_stats() {
     assert!(msg.body.contains("2"));
     assert!(msg.body.contains("3"));
 }
+
+#[test]
+fn overtime_started_message_mentions_still_tracking() {
+    let copy = focusdot::notifications::overtime_started_message();
+    assert!(copy.title.to_lowercase().contains("pomodoro")
+        || copy.title.to_lowercase().contains("focus"));
+    assert!(copy.body.to_lowercase().contains("track")
+        || copy.body.to_lowercase().contains("stop"));
+}
