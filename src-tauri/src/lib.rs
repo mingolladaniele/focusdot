@@ -19,12 +19,12 @@ use tauri::path::BaseDirectory;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::history::{FocusSession, History};
-use crate::notifications::{notify_break_complete, notify_focus_complete};
+use crate::notifications::{notify_break_complete, notify_focus_complete, notify_overtime_started};
 use crate::presets::{Preset, PresetInput};
 use crate::state::AppState;
 use crate::stats::Stats;
 use crate::storage::save_json;
-use crate::timer::{should_emit_periodic_timer_tick, Phase, TimerSnapshot};
+use crate::timer::{should_emit_periodic_timer_tick, total_focus_duration_minutes, Phase, TimerSnapshot};
 use crate::tray::{install_tray, refresh_tray_menu, set_tray_icon_phase, window_title_icon};
 use crate::window_layout::show_main_window_bottom_right;
 
@@ -32,6 +32,24 @@ fn data_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     app.path()
         .resolve("FocusDot", BaseDirectory::AppData)
         .map_err(|e| e.to_string())
+}
+
+pub(crate) fn finalize_overtime_session(core: &mut crate::state::Core) -> TimerSnapshot {
+    let snap = core.timer.snapshot();
+    let started = core.focus_started_at.unwrap_or_else(Utc::now);
+    let duration = total_focus_duration_minutes(snap.focus_minutes, snap.overtime_seconds);
+    core.history.sessions.push(FocusSession {
+        started_at: started,
+        duration_minutes: duration,
+    });
+    let _ = save_json(&core.history_path, &core.history);
+    core.focus_started_at = None;
+    core.timer = core
+        .timer
+        .clone()
+        .end_overtime_start_break()
+        .expect("overtime -> break");
+    core.timer.snapshot()
 }
 
 #[tauri::command]
@@ -96,6 +114,7 @@ fn get_timer(state: tauri::State<'_, Arc<AppState>>) -> Result<TimerSnapshot, St
 struct AppSettingsDto {
     auto_start_next_focus_after_break: bool,
     notifications_enabled: bool,
+    overtime_tracking_enabled: bool,
 }
 
 #[tauri::command]
@@ -104,6 +123,7 @@ fn get_app_settings(state: tauri::State<'_, Arc<AppState>>) -> Result<AppSetting
     Ok(AppSettingsDto {
         auto_start_next_focus_after_break: core.settings.auto_start_next_focus_after_break,
         notifications_enabled: core.settings.notifications_enabled,
+        overtime_tracking_enabled: core.settings.overtime_tracking_enabled,
     })
 }
 
@@ -135,6 +155,18 @@ fn set_notifications_enabled(
 }
 
 #[tauri::command]
+fn set_overtime_tracking_enabled(
+    state: tauri::State<'_, Arc<AppState>>,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+    core.settings.overtime_tracking_enabled = enabled;
+    save_json(&core.settings_path, &core.settings).map_err(|e| e.to_string())?;
+    core.timer = core.timer.clone().with_overtime_enabled(enabled);
+    Ok(())
+}
+
+#[tauri::command]
 fn start_preset(
     app: AppHandle,
     state: tauri::State<'_, Arc<AppState>>,
@@ -150,6 +182,7 @@ fn start_preset(
             .cloned()
             .ok_or_else(|| "preset not found".to_string())?;
         let auto_next = core.settings.auto_start_next_focus_after_break;
+        let overtime = core.settings.overtime_tracking_enabled;
         let timer = core
             .timer
             .clone()
@@ -159,6 +192,7 @@ fn start_preset(
                 preset.break_minutes,
                 preset.cycles,
                 auto_next,
+                overtime,
             )
             .map_err(|e| e.to_string())?;
         core.timer = timer;
@@ -210,11 +244,16 @@ fn stop_timer(
 ) -> Result<TimerSnapshot, String> {
     let snapshot = {
         let mut core = state.inner.lock().map_err(|e| e.to_string())?;
-        core.timer = core.timer.clone().stop();
-        core.focus_started_at = None;
-        core.timer.snapshot()
+        if core.timer.phase() == Phase::Overtime {
+            finalize_overtime_session(&mut core)
+        } else {
+            core.timer = core.timer.clone().stop();
+            core.focus_started_at = None;
+            core.timer.snapshot()
+        }
     };
-    set_tray_icon_phase(&app, Phase::Idle).map_err(|e| e.to_string())?;
+    let phase = snapshot.phase;
+    set_tray_icon_phase(&app, phase).map_err(|e| e.to_string())?;
     refresh_tray_menu(&app, &*state).map_err(|e| e.to_string())?;
     let _ = app.emit("timer-tick", &snapshot);
     Ok(snapshot)
@@ -236,7 +275,7 @@ fn skip_break(
         match core.timer.phase() {
             Phase::Focus => core.focus_started_at = Some(Utc::now()),
             Phase::Idle => core.focus_started_at = None,
-            Phase::Break => {}
+            Phase::Break | Phase::Overtime => {}
         }
         core.timer.snapshot()
     };
@@ -259,6 +298,18 @@ fn spawn_timer_loop(state: Arc<AppState>) {
         let snapshot = core.timer.snapshot();
 
         if let Some(ev) = tick_result.event {
+            if ev.entered_overtime {
+                let notifications_enabled = core.settings.notifications_enabled;
+                let app = state.app.clone();
+                drop(core);
+                if notifications_enabled {
+                    let _ = notify_overtime_started(&app);
+                }
+                let _ = set_tray_icon_phase(&app, Phase::Overtime);
+                let _ = refresh_tray_menu(&app, &state);
+                let _ = app.emit("timer-tick", &snapshot);
+                continue;
+            }
             if let Some(mins) = ev.completed_focus_minutes {
                 let started = core.focus_started_at.unwrap_or_else(Utc::now);
                 core.history.sessions.push(FocusSession {
@@ -379,6 +430,7 @@ pub fn run() {
             get_app_settings,
             set_auto_start_next_focus_after_break,
             set_notifications_enabled,
+            set_overtime_tracking_enabled,
             start_preset,
             pause_timer,
             resume_timer,

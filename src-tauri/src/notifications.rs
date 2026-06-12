@@ -64,6 +64,13 @@ pub fn break_complete_message(stats: &Stats) -> NotificationCopy {
     }
 }
 
+pub fn overtime_started_message() -> NotificationCopy {
+    NotificationCopy {
+        title: "Pomodoro complete".to_string(),
+        body: "Still tracking — press Stop when you are done.".to_string(),
+    }
+}
+
 pub fn notify_focus_complete(
     app: &AppHandle,
     stats: &Stats,
@@ -74,6 +81,16 @@ pub fn notify_focus_complete(
         .builder()
         .title(&copy.title)
         .body(&copy.body)
+        .show()
+        .map_err(|e| e.to_string())
+}
+
+pub fn notify_overtime_started(app: &AppHandle) -> Result<(), String> {
+    let copy = overtime_started_message();
+    app.notification()
+        .builder()
+        .title(copy.title)
+        .body(copy.body)
         .show()
         .map_err(|e| e.to_string())
 }

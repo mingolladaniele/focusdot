@@ -53,7 +53,7 @@ pub fn window_title_icon() -> Image<'static> {
 pub fn icon_for_phase(phase: Phase) -> Image<'static> {
     match phase {
         Phase::Idle => circular_icon((255, 255, 255)),
-        Phase::Focus => circular_icon((43, 182, 115)),
+        Phase::Focus | Phase::Overtime => circular_icon((43, 182, 115)),
         Phase::Break => circular_icon((74, 144, 226)),
     }
 }
@@ -63,6 +63,7 @@ fn tray_tooltip(phase: Phase) -> &'static str {
     match phase {
         Phase::Idle => "focusdot · Idle",
         Phase::Focus => "focusdot · Focus",
+        Phase::Overtime => "focusdot · Overtime",
         Phase::Break => "focusdot · Break",
     }
 }
@@ -124,17 +125,22 @@ pub fn build_root_menu<R: Runtime>(
     }
 
     if phase != Phase::Idle {
+        let stop_label = if phase == Phase::Overtime {
+            "Stop (end focus & start break)"
+        } else {
+            "Stop (reset to idle)"
+        };
         let stop = MenuItem::with_id(
             handle,
             "stop",
-            "Stop (reset to idle)",
+            stop_label,
             true,
             None::<&str>,
         )?;
         items.push(Box::new(stop));
     }
 
-    let settings = MenuItem::with_id(handle, "settings", "Settings", true, None::<&str>)?;
+    let settings = MenuItem::with_id(handle, "settings", "Settings & dashboard", true, None::<&str>)?;
     items.push(Box::new(settings));
 
     let sep = PredefinedMenuItem::separator(handle)?;
@@ -187,11 +193,21 @@ pub fn handle_menu_event<R: Runtime>(
             }
         }
         "stop" => {
-            if let Ok(mut c) = state.inner.lock() {
-                c.timer = c.timer.clone().stop();
-                c.focus_started_at = None;
-            }
-            let _ = set_tray_icon_phase(app, Phase::Idle);
+            let phase = {
+                let mut c = match state.inner.lock() {
+                    Ok(g) => g,
+                    Err(_) => return,
+                };
+                if c.timer.phase() == Phase::Overtime {
+                    let snap = crate::finalize_overtime_session(&mut c);
+                    snap.phase
+                } else {
+                    c.timer = c.timer.clone().stop();
+                    c.focus_started_at = None;
+                    Phase::Idle
+                }
+            };
+            let _ = set_tray_icon_phase(app, phase);
             let _ = refresh_tray_menu(app, state);
             if let Ok(c) = state.inner.lock() {
                 let snap = c.timer.snapshot();
@@ -211,7 +227,7 @@ pub fn handle_menu_event<R: Runtime>(
                         match c.timer.phase() {
                             Phase::Focus => c.focus_started_at = Some(Utc::now()),
                             Phase::Idle => c.focus_started_at = None,
-                            Phase::Break => {}
+                            Phase::Break | Phase::Overtime => {}
                         }
                         c.timer.phase()
                     }
@@ -236,6 +252,7 @@ pub fn handle_menu_event<R: Runtime>(
                             preset.break_minutes,
                             preset.cycles,
                             c.settings.auto_start_next_focus_after_break,
+                            c.settings.overtime_tracking_enabled,
                         ) {
                             c.timer = t;
                             c.focus_started_at = Some(Utc::now());
@@ -316,5 +333,10 @@ mod tests {
         assert_eq!(tray_tooltip(Phase::Idle), "focusdot · Idle");
         assert_eq!(tray_tooltip(Phase::Focus), "focusdot · Focus");
         assert_eq!(tray_tooltip(Phase::Break), "focusdot · Break");
+    }
+
+    #[test]
+    fn tray_tooltip_includes_overtime_phase() {
+        assert_eq!(tray_tooltip(Phase::Overtime), "focusdot · Overtime");
     }
 }

@@ -5,7 +5,12 @@ use thiserror::Error;
 pub enum Phase {
     Idle,
     Focus,
+    Overtime,
     Break,
+}
+
+pub fn total_focus_duration_minutes(focus_minutes: u32, overtime_seconds: u32) -> u32 {
+    focus_minutes + overtime_seconds.div_ceil(60)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -17,6 +22,7 @@ pub struct TimerSnapshot {
     pub break_minutes: u32,
     pub cycles_remaining: u32,
     pub auto_start_next: bool,
+    pub overtime_seconds: u32,
 }
 
 /// Periodic `timer-tick` is only needed while a phase countdown is actively running.
@@ -35,6 +41,8 @@ pub struct Timer {
     cycles_remaining: u32,
     auto_start_next: bool,
     running: bool,
+    overtime_enabled: bool,
+    overtime_seconds: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,6 +55,7 @@ pub struct TickResult {
 pub struct TimerEvent {
     pub timer: Timer,
     pub completed_focus_minutes: Option<u32>,
+    pub entered_overtime: bool,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -72,6 +81,8 @@ impl Timer {
             cycles_remaining: 0,
             auto_start_next: false,
             running: false,
+            overtime_enabled: false,
+            overtime_seconds: 0,
         }
     }
 
@@ -81,6 +92,7 @@ impl Timer {
         break_minutes: u32,
         cycles: u32,
         auto_start_next: bool,
+        overtime_enabled: bool,
     ) -> Result<Self, TimerError> {
         if focus_minutes == 0 || break_minutes == 0 || cycles == 0 {
             return Err(TimerError::InvalidMinutes);
@@ -93,6 +105,8 @@ impl Timer {
         self.total_cycles = cycles;
         self.cycles_remaining = cycles - 1;
         self.auto_start_next = auto_start_next;
+        self.overtime_enabled = overtime_enabled;
+        self.overtime_seconds = 0;
         self.running = true;
         Ok(self)
     }
@@ -101,6 +115,14 @@ impl Timer {
     pub fn with_auto_start_next(mut self, enabled: bool) -> Self {
         if self.phase != Phase::Idle {
             self.auto_start_next = enabled;
+        }
+        self
+    }
+
+    /// Updates overtime tracking for the current session (Focus phase only).
+    pub fn with_overtime_enabled(mut self, enabled: bool) -> Self {
+        if self.phase == Phase::Focus {
+            self.overtime_enabled = enabled;
         }
         self
     }
@@ -128,6 +150,17 @@ impl Timer {
 
     pub fn stop(self) -> Self {
         Self::new()
+    }
+
+    pub fn end_overtime_start_break(mut self) -> Result<Self, TimerError> {
+        if self.phase != Phase::Overtime {
+            return Err(TimerError::WrongPhase);
+        }
+        self.phase = Phase::Break;
+        self.remaining_seconds = self.break_minutes * 60;
+        self.overtime_seconds = 0;
+        self.running = true;
+        Ok(self)
     }
 
     /// Ends the current break early. If another focus cycle remains (`cycles_remaining > 0`),
@@ -160,6 +193,14 @@ impl Timer {
             };
         }
 
+        if self.phase == Phase::Overtime {
+            self.overtime_seconds += elapsed_seconds;
+            return TickResult {
+                timer: self,
+                event: None,
+            };
+        }
+
         if elapsed_seconds < self.remaining_seconds {
             self.remaining_seconds -= elapsed_seconds;
             return TickResult {
@@ -170,15 +211,31 @@ impl Timer {
 
         match self.phase {
             Phase::Focus => {
-                self.phase = Phase::Break;
-                self.remaining_seconds = self.break_minutes * 60;
-                let event_timer = self.clone();
-                TickResult {
-                    timer: self.clone(),
-                    event: Some(TimerEvent {
-                        timer: event_timer,
-                        completed_focus_minutes: Some(self.focus_minutes),
-                    }),
+                if self.overtime_enabled {
+                    self.phase = Phase::Overtime;
+                    self.remaining_seconds = 0;
+                    self.overtime_seconds = 0;
+                    self.running = true;
+                    TickResult {
+                        timer: self.clone(),
+                        event: Some(TimerEvent {
+                            timer: self.clone(),
+                            completed_focus_minutes: None,
+                            entered_overtime: true,
+                        }),
+                    }
+                } else {
+                    self.phase = Phase::Break;
+                    self.remaining_seconds = self.break_minutes * 60;
+                    let event_timer = self.clone();
+                    TickResult {
+                        timer: self.clone(),
+                        event: Some(TimerEvent {
+                            timer: event_timer,
+                            completed_focus_minutes: Some(self.focus_minutes),
+                            entered_overtime: false,
+                        }),
+                    }
                 }
             }
             Phase::Break => {
@@ -213,7 +270,7 @@ impl Timer {
                     event: None,
                 }
             }
-            Phase::Idle => TickResult {
+            Phase::Overtime | Phase::Idle => TickResult {
                 timer: self,
                 event: None,
             },
@@ -241,6 +298,7 @@ impl Timer {
             break_minutes: self.break_minutes,
             cycles_remaining: self.cycles_remaining,
             auto_start_next: self.auto_start_next,
+            overtime_seconds: self.overtime_seconds,
         }
     }
 }

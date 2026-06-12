@@ -45,6 +45,8 @@ html, body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
+  height: 100%;
+  overflow-y: auto;
 }
 
 button { font: inherit; color: inherit; cursor: pointer; }
@@ -82,6 +84,10 @@ main {
   transition: background .25s, box-shadow .25s;
 }
 .brand-dot[data-phase="Focus"] {
+  background: var(--tray-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tray-focus) 28%, transparent);
+}
+.brand-dot[data-phase="Overtime"] {
   background: var(--tray-focus);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--tray-focus) 28%, transparent);
 }
@@ -129,6 +135,17 @@ main {
 .status-pill[data-phase="Focus"][data-running="true"] .status-pulse {
   animation: pulse 1.6s ease-in-out infinite;
 }
+.status-pill[data-phase="Overtime"] {
+  color: color-mix(in oklab, var(--tray-focus) 85%, var(--text));
+  background: color-mix(in srgb, var(--tray-focus) 16%, oklch(0.20 0.005 250));
+  border-color: color-mix(in srgb, var(--tray-focus) 38%, var(--line-soft));
+}
+.status-pill[data-phase="Overtime"] .status-pulse {
+  background: var(--tray-focus);
+}
+.status-pill[data-phase="Overtime"][data-running="true"] .status-pulse {
+  animation: pulse 1.6s ease-in-out infinite;
+}
 .status-pill[data-phase="Break"] {
   color: color-mix(in oklab, var(--tray-break) 82%, var(--text));
   background: color-mix(in srgb, var(--tray-break) 14%, oklch(0.20 0.005 250));
@@ -170,6 +187,49 @@ main {
   text-transform: uppercase;
   color: var(--muted);
 }
+
+/* ============ COLLAPSIBLE SECTIONS ============ */
+.collapsible-card {
+  padding: 0;
+  gap: 0;
+}
+.collapsible {
+  display: flex;
+  flex-direction: column;
+}
+.collapsible-trigger {
+  list-style: none;
+  cursor: pointer;
+  padding: 16px;
+  user-select: none;
+  transition: background .12s;
+}
+.collapsible-trigger::-webkit-details-marker { display: none; }
+.collapsible-trigger::marker { content: ""; }
+.collapsible-trigger:hover { background: var(--surface-2); }
+.collapsible-trigger:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 55%, transparent);
+  outline-offset: -2px;
+}
+.collapsible-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dim);
+  transition: transform .2s ease, color .15s;
+}
+.collapsible[open] .collapsible-chevron {
+  transform: rotate(180deg);
+  color: var(--muted);
+}
+.collapsible-body {
+  padding: 0 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+details:not([open]) .collapsible-trigger { padding-bottom: 16px; }
+details[open] .collapsible-trigger { padding-bottom: 12px; }
 
 /* ============ TIMER ============ */
 .timer-card .phase {

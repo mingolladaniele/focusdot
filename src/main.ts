@@ -26,29 +26,34 @@ type StatsResponse = {
 type AppSettingsDto = {
   autoStartNextFocusAfterBreak: boolean;
   notificationsEnabled: boolean;
+  overtimeTrackingEnabled: boolean;
 };
 
 export type TimerSnapshot = {
-  phase: "Idle" | "Focus" | "Break";
+  phase: "Idle" | "Focus" | "Overtime" | "Break";
   running: boolean;
   remaining_seconds: number;
   focus_minutes: number;
   break_minutes: number;
   cycles_remaining: number;
   auto_start_next: boolean;
+  overtime_seconds: number;
 };
 
-/** Stats change when history changes; focus completion is Focus → Break in the timer model. */
+/** Stats change when history changes; focus completion is Focus/Overtime → Break in the timer model. */
 export function shouldRefreshStatsAfterTick(
   previousPhase: TimerSnapshot["phase"] | undefined,
   payload: TimerSnapshot
 ): boolean {
-  return previousPhase === "Focus" && payload.phase === "Break";
+  const endedFocus =
+    previousPhase === "Focus" || previousPhase === "Overtime";
+  return endedFocus && payload.phase === "Break";
 }
 
 const PHASE_LABEL: Record<TimerSnapshot["phase"], string> = {
   Idle: "Idle",
   Focus: "Focus session",
+  Overtime: "Overtime",
   Break: "Break"
 };
 
@@ -75,8 +80,15 @@ function formatMmSs(totalSeconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+function formatOvertimeDisplay(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `+${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 function timerProgressPercent(snapshot: TimerSnapshot): number {
   if (snapshot.phase === "Idle") return 0;
+  if (snapshot.phase === "Overtime") return 100;
   const totalSeconds =
     snapshot.phase === "Focus"
       ? Math.max(0, snapshot.focus_minutes) * 60
@@ -103,7 +115,13 @@ export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
     phaseEl.textContent = label;
   }
   if (timeEl) {
-    timeEl.textContent = snapshot.phase === "Idle" ? "--:--" : formatMmSs(snapshot.remaining_seconds);
+    if (snapshot.phase === "Idle") {
+      timeEl.textContent = "--:--";
+    } else if (snapshot.phase === "Overtime") {
+      timeEl.textContent = formatOvertimeDisplay(snapshot.overtime_seconds);
+    } else {
+      timeEl.textContent = formatMmSs(snapshot.remaining_seconds);
+    }
   }
   if (dot) {
     dot.setAttribute("data-phase", snapshot.phase);
@@ -123,6 +141,7 @@ export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
     const short: Record<TimerSnapshot["phase"], string> = {
       Idle: "Idle",
       Focus: "Focus",
+      Overtime: "Overtime",
       Break: "Break"
     };
     statusText.textContent = short[snapshot.phase];
@@ -298,15 +317,18 @@ function bindResetHistory(): void {
 async function bindAppSettings(): Promise<void> {
   const auto = document.querySelector<HTMLInputElement>("#auto-start-next-focus");
   const notif = document.querySelector<HTMLInputElement>("#notifications-enabled");
-  if (!auto && !notif) return;
+  const overtime = document.querySelector<HTMLInputElement>("#overtime-tracking");
+  if (!auto && !notif && !overtime) return;
 
   try {
     const s = await invoke<AppSettingsDto>("get_app_settings");
     if (auto) auto.checked = s.autoStartNextFocusAfterBreak;
     if (notif) notif.checked = s.notificationsEnabled;
+    if (overtime) overtime.checked = s.overtimeTrackingEnabled;
   } catch {
     if (auto) auto.checked = false;
     if (notif) notif.checked = true;
+    if (overtime) overtime.checked = false;
   }
 
   auto?.addEventListener("change", async () => {
@@ -314,6 +336,9 @@ async function bindAppSettings(): Promise<void> {
   });
   notif?.addEventListener("change", async () => {
     await invoke("set_notifications_enabled", { enabled: notif.checked });
+  });
+  overtime?.addEventListener("change", async () => {
+    await invoke("set_overtime_tracking_enabled", { enabled: overtime.checked });
   });
 }
 
