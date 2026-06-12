@@ -45,6 +45,8 @@ html, body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
+  height: 100%;
+  overflow-y: auto;
 }
 
 button { font: inherit; color: inherit; cursor: pointer; }

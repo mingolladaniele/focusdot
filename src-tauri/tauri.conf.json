@@ -20,9 +20,9 @@
         "label": "main",
         "title": "focusdot",
         "width": 420,
-        "height": 560,
+        "height": 640,
         "visible": false,
-        "resizable": false
+        "resizable": true
       }
     ]
   },

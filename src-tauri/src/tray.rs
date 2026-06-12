@@ -140,7 +140,7 @@ pub fn build_root_menu<R: Runtime>(
         items.push(Box::new(stop));
     }
 
-    let settings = MenuItem::with_id(handle, "settings", "Settings", true, None::<&str>)?;
+    let settings = MenuItem::with_id(handle, "settings", "Settings & dashboard", true, None::<&str>)?;
     items.push(Box::new(settings));
 
     let sep = PredefinedMenuItem::separator(handle)?;

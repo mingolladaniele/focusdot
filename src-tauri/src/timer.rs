@@ -119,6 +119,14 @@ impl Timer {
         self
     }
 
+    /// Updates overtime tracking for the current session (Focus phase only).
+    pub fn with_overtime_enabled(mut self, enabled: bool) -> Self {
+        if self.phase == Phase::Focus {
+            self.overtime_enabled = enabled;
+        }
+        self
+    }
+
     pub fn pause(mut self) -> Result<Self, TimerError> {
         if self.phase == Phase::Idle {
             return Err(TimerError::Idle);

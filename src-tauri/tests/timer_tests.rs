@@ -352,6 +352,16 @@ fn periodic_tick_emits_during_running_overtime() {
 }
 
 #[test]
+fn with_overtime_enabled_updates_active_focus_session() {
+    let timer = Timer::new()
+        .start_focus(1, 5, 1, false, false)
+        .expect("start");
+    let timer = timer.with_overtime_enabled(true);
+    let result = timer.tick(60);
+    assert_eq!(result.timer.phase(), Phase::Overtime);
+}
+
+#[test]
 fn end_overtime_start_break_errors_when_not_overtime() {
     let err = Timer::new()
         .start_focus(1, 5, 1, false, false)

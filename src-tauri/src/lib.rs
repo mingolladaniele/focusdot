@@ -162,6 +162,7 @@ fn set_overtime_tracking_enabled(
     let mut core = state.inner.lock().map_err(|e| e.to_string())?;
     core.settings.overtime_tracking_enabled = enabled;
     save_json(&core.settings_path, &core.settings).map_err(|e| e.to_string())?;
+    core.timer = core.timer.clone().with_overtime_enabled(enabled);
     Ok(())
 }
 
