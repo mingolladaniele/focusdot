@@ -6,6 +6,8 @@ fn sample_stats() -> Stats {
         sessions_today: 2,
         focus_minutes_today: 50,
         focus_minutes_this_week: 180,
+        focus_minutes_this_month: 400,
+        focus_minutes_this_year: 1200,
         current_streak_days: 3,
     }
 }

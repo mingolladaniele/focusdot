@@ -11,6 +11,8 @@ pub struct Stats {
     pub sessions_today: usize,
     pub focus_minutes_today: u32,
     pub focus_minutes_this_week: u32,
+    pub focus_minutes_this_month: u32,
+    pub focus_minutes_this_year: u32,
     pub current_streak_days: u32,
 }
 
@@ -39,6 +41,25 @@ pub fn calculate_stats(history: &History, now: DateTime<Utc>) -> Stats {
         .map(|session| session.duration_minutes)
         .sum::<u32>();
 
+    let focus_minutes_this_month: u32 = history
+        .sessions
+        .iter()
+        .filter(|session| {
+            let d = session.started_at.with_timezone(&Local);
+            d.year() == now_local.year() && d.month() == now_local.month()
+        })
+        .map(|session| session.duration_minutes)
+        .sum::<u32>();
+
+    let focus_minutes_this_year: u32 = history
+        .sessions
+        .iter()
+        .filter(|session| {
+            session.started_at.with_timezone(&Local).year() == now_local.year()
+        })
+        .map(|session| session.duration_minutes)
+        .sum::<u32>();
+
     let session_dates: HashSet<NaiveDate> = history
         .sessions
         .iter()
@@ -58,6 +79,8 @@ pub fn calculate_stats(history: &History, now: DateTime<Utc>) -> Stats {
         sessions_today,
         focus_minutes_today,
         focus_minutes_this_week,
+        focus_minutes_this_month,
+        focus_minutes_this_year,
         current_streak_days,
     }
 }
