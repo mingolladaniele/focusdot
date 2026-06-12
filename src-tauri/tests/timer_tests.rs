@@ -323,3 +323,30 @@ fn end_overtime_start_break_transitions_to_break() {
     assert_eq!(timer.snapshot().overtime_seconds, 0);
     assert!(timer.is_running());
 }
+
+#[test]
+fn pauses_and_resumes_overtime_without_losing_elapsed() {
+    let timer = Timer::new()
+        .start_focus(1, 5, 1, false, true)
+        .expect("start");
+    let timer = timer.tick(60).timer.tick(30).timer;
+    let timer = timer.pause().expect("pause");
+
+    assert_eq!(timer.snapshot().overtime_seconds, 30);
+    assert!(!timer.is_running());
+
+    let timer = timer.resume().expect("resume").tick(5).timer;
+    assert_eq!(timer.snapshot().overtime_seconds, 35);
+}
+
+#[test]
+fn periodic_tick_emits_during_running_overtime() {
+    let snap = Timer::new()
+        .start_focus(1, 5, 1, false, true)
+        .expect("start")
+        .tick(60)
+        .timer
+        .snapshot();
+    assert_eq!(snap.phase, Phase::Overtime);
+    assert!(should_emit_periodic_timer_tick(&snap));
+}
