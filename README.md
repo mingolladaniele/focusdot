@@ -55,6 +55,25 @@ Tray-first Pomodoro for Windows. Start a focus block, close the window, and keep
 
 Requires [Node.js](https://nodejs.org/) 20+, [Rust](https://rustup.rs/) stable, and [Tauri 2 Windows prerequisites](https://v2.tauri.app/start/prerequisites/) (WebView2, MSVC Build Tools).
 
+### Local development (required workflow)
+
+The debug build does **not** bundle the UI. It loads the dashboard from the Vite dev server at `http://localhost:5173` (see `src-tauri/tauri.conf.json` → `devUrl`).
+
+**Do not double-click or run `src-tauri\target\debug\focusdot.exe` by itself.** Without Vite running, the window title shows "focusdot" but the content area stays blank/black.
+
+From the repo root:
+
+```bash
+npm install
+npm run tauri dev
+```
+
+Keep that terminal open. Vite starts first, then Tauri launches the app. Left-click the tray icon to open the dashboard (the main window starts hidden).
+
+To stop: `Ctrl+C` in the dev terminal.
+
+### Other commands
+
 | Goal | Command |
 |------|---------|
 | Dev server | `npm install` then `npm run tauri dev` |
