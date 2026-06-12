@@ -46,23 +46,6 @@ beforeEach(() => {
           <button type="button" id="btn-stop" data-testid="btn-stop" class="btn btn-ghost">Stop</button>
         </div>
       </section>
-      <section class="card">
-        <ul id="preset-list" data-testid="preset-list"></ul>
-        <form id="preset-form">
-          <input type="hidden" id="preset-id" name="presetId" value="" />
-          <label class="field" for="preset-name"><span>Name</span>
-            <input id="preset-name" name="name" required /></label>
-          <label class="field" for="focus-minutes"><span>Focus minutes</span>
-            <input id="focus-minutes" name="focusMinutes" type="number" min="1" required /></label>
-          <label class="field" for="break-minutes"><span>Break minutes</span>
-            <input id="break-minutes" name="breakMinutes" type="number" min="1" required /></label>
-          <label class="field" for="cycles"><span>Cycles</span>
-            <input id="cycles" name="cycles" type="number" min="1" value="1" /></label>
-          <button class="btn btn-primary" type="submit" id="preset-submit">Save preset</button>
-          <button type="button" class="btn btn-link" id="preset-cancel-edit" hidden>Cancel edit</button>
-        </form>
-        <p id="preset-error" class="error" role="alert"></p>
-      </section>
       <section class="card stats-card" aria-labelledby="stats-title">
         <div class="section-head">
           <h2 id="stats-title">Statistics</h2>
@@ -87,52 +70,80 @@ beforeEach(() => {
           </div>
         </div>
       </section>
-      <section class="card" aria-labelledby="startup-title">
-        <div class="section-head">
-          <h2 id="startup-title">App</h2>
-        </div>
-        <div class="toggle-list">
-          <label class="toggle">
-            <span class="toggle-text">
-              <span class="toggle-label">Auto-start next focus after break</span>
-              <span class="toggle-hint">When off, the timer stops after each break until you start again; you can still press Start focus now during a break to continue a multi-cycle plan.</span>
-            </span>
-            <span class="switch">
-              <input type="checkbox" id="auto-start-next-focus" />
-              <span class="switch-track"><span class="switch-thumb"></span></span>
-            </span>
-          </label>
-          <label class="toggle">
-            <span class="toggle-text">
-              <span class="toggle-label">Overtime tracking</span>
-              <span class="toggle-hint">When a focus block ends, keep counting extra time until you press Stop.</span>
-            </span>
-            <span class="switch">
-              <input type="checkbox" id="overtime-tracking" />
-              <span class="switch-track"><span class="switch-thumb"></span></span>
-            </span>
-          </label>
-          <label class="toggle">
-            <span class="toggle-text">
-              <span class="toggle-label">Session notifications</span>
-              <span class="toggle-hint">Desktop alerts when a focus or break block ends.</span>
-            </span>
-            <span class="switch">
-              <input type="checkbox" id="notifications-enabled" />
-              <span class="switch-track"><span class="switch-thumb"></span></span>
-            </span>
-          </label>
-          <label class="toggle">
-            <span class="toggle-text">
-              <span class="toggle-label">Launch on Windows startup</span>
-              <span class="toggle-hint">Open focusdot when you sign in.</span>
-            </span>
-            <span class="switch">
-              <input type="checkbox" id="launch-startup" />
-              <span class="switch-track"><span class="switch-thumb"></span></span>
-            </span>
-          </label>
-        </div>
+      <section class="card collapsible-card" aria-labelledby="startup-title">
+        <details class="collapsible" data-testid="app-section">
+          <summary class="collapsible-trigger section-head">
+            <h2 id="startup-title">App</h2>
+          </summary>
+          <div class="collapsible-body">
+            <div class="toggle-list">
+              <label class="toggle">
+                <span class="toggle-text">
+                  <span class="toggle-label">Auto-start next focus after break</span>
+                  <span class="toggle-hint">When off, the timer stops after each break until you start again; you can still press Start focus now during a break to continue a multi-cycle plan.</span>
+                </span>
+                <span class="switch">
+                  <input type="checkbox" id="auto-start-next-focus" />
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </span>
+              </label>
+              <label class="toggle">
+                <span class="toggle-text">
+                  <span class="toggle-label">Overtime tracking</span>
+                  <span class="toggle-hint">When a focus block ends, keep counting extra time until you press Stop.</span>
+                </span>
+                <span class="switch">
+                  <input type="checkbox" id="overtime-tracking" />
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </span>
+              </label>
+              <label class="toggle">
+                <span class="toggle-text">
+                  <span class="toggle-label">Session notifications</span>
+                  <span class="toggle-hint">Desktop alerts when a focus or break block ends.</span>
+                </span>
+                <span class="switch">
+                  <input type="checkbox" id="notifications-enabled" />
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </span>
+              </label>
+              <label class="toggle">
+                <span class="toggle-text">
+                  <span class="toggle-label">Launch on Windows startup</span>
+                  <span class="toggle-hint">Open focusdot when you sign in.</span>
+                </span>
+                <span class="switch">
+                  <input type="checkbox" id="launch-startup" />
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </span>
+              </label>
+            </div>
+          </div>
+        </details>
+      </section>
+      <section class="card collapsible-card" aria-labelledby="presets-title">
+        <details class="collapsible" data-testid="presets-section">
+          <summary class="collapsible-trigger section-head">
+            <h2 id="presets-title">Presets</h2>
+          </summary>
+          <div class="collapsible-body">
+            <ul id="preset-list" data-testid="preset-list"></ul>
+            <form id="preset-form">
+              <input type="hidden" id="preset-id" name="presetId" value="" />
+              <label class="field" for="preset-name"><span>Name</span>
+                <input id="preset-name" name="name" required /></label>
+              <label class="field" for="focus-minutes"><span>Focus minutes</span>
+                <input id="focus-minutes" name="focusMinutes" type="number" min="1" required /></label>
+              <label class="field" for="break-minutes"><span>Break minutes</span>
+                <input id="break-minutes" name="breakMinutes" type="number" min="1" required /></label>
+              <label class="field" for="cycles"><span>Cycles</span>
+                <input id="cycles" name="cycles" type="number" min="1" value="1" /></label>
+              <button class="btn btn-primary" type="submit" id="preset-submit">Save preset</button>
+              <button type="button" class="btn btn-link" id="preset-cancel-edit" hidden>Cancel edit</button>
+            </form>
+            <p id="preset-error" class="error" role="alert"></p>
+          </div>
+        </details>
       </section>
     </main>
   `;
@@ -204,6 +215,29 @@ describe("overtime UI", () => {
       auto_start_next: false,
       overtime_seconds: 0
     })).toBe(true);
+  });
+});
+
+describe("dashboard layout", () => {
+  it("places statistics immediately after the timer", () => {
+    const sections = Array.from(document.querySelectorAll<HTMLElement>("main#app > section"));
+    const timerIdx = sections.findIndex((s) => s.classList.contains("timer-card"));
+    const statsIdx = sections.findIndex((s) => s.classList.contains("stats-card"));
+    expect(timerIdx).toBeGreaterThanOrEqual(0);
+    expect(statsIdx).toBe(timerIdx + 1);
+  });
+
+  it("keeps app and presets collapsed by default", () => {
+    const app = screen.getByTestId("app-section") as HTMLDetailsElement;
+    const presets = screen.getByTestId("presets-section") as HTMLDetailsElement;
+    expect(app.open).toBe(false);
+    expect(presets.open).toBe(false);
+  });
+
+  it("expands app section when summary is clicked", async () => {
+    const app = screen.getByTestId("app-section") as HTMLDetailsElement;
+    await userEvent.click(app.querySelector("summary")!);
+    expect(app.open).toBe(true);
   });
 });
 

@@ -188,6 +188,49 @@ main {
   color: var(--muted);
 }
 
+/* ============ COLLAPSIBLE SECTIONS ============ */
+.collapsible-card {
+  padding: 0;
+  gap: 0;
+}
+.collapsible {
+  display: flex;
+  flex-direction: column;
+}
+.collapsible-trigger {
+  list-style: none;
+  cursor: pointer;
+  padding: 16px;
+  user-select: none;
+  transition: background .12s;
+}
+.collapsible-trigger::-webkit-details-marker { display: none; }
+.collapsible-trigger::marker { content: ""; }
+.collapsible-trigger:hover { background: var(--surface-2); }
+.collapsible-trigger:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 55%, transparent);
+  outline-offset: -2px;
+}
+.collapsible-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dim);
+  transition: transform .2s ease, color .15s;
+}
+.collapsible[open] .collapsible-chevron {
+  transform: rotate(180deg);
+  color: var(--muted);
+}
+.collapsible-body {
+  padding: 0 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+details:not([open]) .collapsible-trigger { padding-bottom: 16px; }
+details[open] .collapsible-trigger { padding-bottom: 12px; }
+
 /* ============ TIMER ============ */
 .timer-card .phase {
   margin: 0;
