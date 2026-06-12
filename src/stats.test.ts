@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   statFocusTodayValue,
+  statPeriodMinutesValue,
   statSessionsTodayValue,
   statStreakValue,
   statWeekValue
@@ -27,5 +28,19 @@ describe("stats tile values", () => {
   it("formats week minutes", () => {
     expect(statWeekValue(0)).toBe("0h 0m");
     expect(statWeekValue(80)).toBe("1h 20m");
+  });
+});
+
+describe("statPeriodMinutesValue", () => {
+  it("formats period minutes as hours and minutes", () => {
+    expect(statPeriodMinutesValue(0)).toBe("0h 0m");
+    expect(statPeriodMinutesValue(80)).toBe("1h 20m");
+    expect(statPeriodMinutesValue(600)).toBe("10h 0m");
+  });
+});
+
+describe("statWeekValue", () => {
+  it("delegates to statPeriodMinutesValue", () => {
+    expect(statWeekValue(80)).toBe(statPeriodMinutesValue(80));
   });
 });

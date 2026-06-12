@@ -221,6 +221,71 @@ fn focus_minutes_this_week_matches_filtered_duration_sum() {
 }
 
 #[test]
+fn focus_minutes_this_month_matches_filtered_duration_sum() {
+    use chrono::TimeZone;
+    let now = Utc.with_ymd_and_hms(2026, 6, 15, 12, 0, 0).unwrap();
+    let now_local = now.with_timezone(&Local);
+    let inside_month = Utc.with_ymd_and_hms(2026, 6, 1, 10, 0, 0).unwrap();
+    let outside_month = Utc.with_ymd_and_hms(2026, 5, 31, 10, 0, 0).unwrap();
+    let history = History {
+        sessions: vec![
+            FocusSession {
+                started_at: inside_month,
+                duration_minutes: 40,
+            },
+            FocusSession {
+                started_at: outside_month,
+                duration_minutes: 999,
+            },
+        ],
+    };
+    let expected: u32 = history
+        .sessions
+        .iter()
+        .filter(|s| {
+            let d = s.started_at.with_timezone(&Local);
+            d.year() == now_local.year() && d.month() == now_local.month()
+        })
+        .map(|s| s.duration_minutes)
+        .sum::<u32>();
+
+    let stats = calculate_stats(&history, now);
+    assert_eq!(stats.focus_minutes_this_month, expected);
+    assert_eq!(stats.focus_minutes_this_month, 40);
+}
+
+#[test]
+fn focus_minutes_this_year_matches_filtered_duration_sum() {
+    use chrono::TimeZone;
+    let now = Utc.with_ymd_and_hms(2026, 6, 15, 12, 0, 0).unwrap();
+    let now_local = now.with_timezone(&Local);
+    let inside_year = Utc.with_ymd_and_hms(2026, 1, 2, 10, 0, 0).unwrap();
+    let outside_year = Utc.with_ymd_and_hms(2025, 12, 31, 10, 0, 0).unwrap();
+    let history = History {
+        sessions: vec![
+            FocusSession {
+                started_at: inside_year,
+                duration_minutes: 55,
+            },
+            FocusSession {
+                started_at: outside_year,
+                duration_minutes: 999,
+            },
+        ],
+    };
+    let expected: u32 = history
+        .sessions
+        .iter()
+        .filter(|s| s.started_at.with_timezone(&Local).year() == now_local.year())
+        .map(|s| s.duration_minutes)
+        .sum::<u32>();
+
+    let stats = calculate_stats(&history, now);
+    assert_eq!(stats.focus_minutes_this_year, expected);
+    assert_eq!(stats.focus_minutes_this_year, 55);
+}
+
+#[test]
 fn history_json_accepts_camel_case_session_fields() {
     let raw = r#"{"sessions":[{"startedAt":"2026-04-30T09:00:00Z","durationMinutes":25}]}"#;
     let loaded: History = serde_json::from_str(raw).expect("camelCase keys");

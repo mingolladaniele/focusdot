@@ -17,9 +17,14 @@ export function statStreakValue(days: number): string {
   return String(days);
 }
 
-/** Tile primary value for this week's focus time */
-export function statWeekValue(minutes: number): string {
+/** Tile primary value for focus minutes over a period (week, month, year) */
+export function statPeriodMinutesValue(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   return `${hours}h ${remainingMinutes}m`;
+}
+
+/** @deprecated alias — use statPeriodMinutesValue */
+export function statWeekValue(minutes: number): string {
+  return statPeriodMinutesValue(minutes);
 }
