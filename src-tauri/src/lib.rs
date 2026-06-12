@@ -114,6 +114,7 @@ fn get_timer(state: tauri::State<'_, Arc<AppState>>) -> Result<TimerSnapshot, St
 struct AppSettingsDto {
     auto_start_next_focus_after_break: bool,
     notifications_enabled: bool,
+    overtime_tracking_enabled: bool,
 }
 
 #[tauri::command]
@@ -122,6 +123,7 @@ fn get_app_settings(state: tauri::State<'_, Arc<AppState>>) -> Result<AppSetting
     Ok(AppSettingsDto {
         auto_start_next_focus_after_break: core.settings.auto_start_next_focus_after_break,
         notifications_enabled: core.settings.notifications_enabled,
+        overtime_tracking_enabled: core.settings.overtime_tracking_enabled,
     })
 }
 
@@ -153,6 +155,17 @@ fn set_notifications_enabled(
 }
 
 #[tauri::command]
+fn set_overtime_tracking_enabled(
+    state: tauri::State<'_, Arc<AppState>>,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+    core.settings.overtime_tracking_enabled = enabled;
+    save_json(&core.settings_path, &core.settings).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 fn start_preset(
     app: AppHandle,
     state: tauri::State<'_, Arc<AppState>>,
@@ -168,6 +181,7 @@ fn start_preset(
             .cloned()
             .ok_or_else(|| "preset not found".to_string())?;
         let auto_next = core.settings.auto_start_next_focus_after_break;
+        let overtime = core.settings.overtime_tracking_enabled;
         let timer = core
             .timer
             .clone()
@@ -177,7 +191,7 @@ fn start_preset(
                 preset.break_minutes,
                 preset.cycles,
                 auto_next,
-                false,
+                overtime,
             )
             .map_err(|e| e.to_string())?;
         core.timer = timer;
@@ -415,6 +429,7 @@ pub fn run() {
             get_app_settings,
             set_auto_start_next_focus_after_break,
             set_notifications_enabled,
+            set_overtime_tracking_enabled,
             start_preset,
             pause_timer,
             resume_timer,

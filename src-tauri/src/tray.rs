@@ -125,10 +125,15 @@ pub fn build_root_menu<R: Runtime>(
     }
 
     if phase != Phase::Idle {
+        let stop_label = if phase == Phase::Overtime {
+            "Stop (end focus & start break)"
+        } else {
+            "Stop (reset to idle)"
+        };
         let stop = MenuItem::with_id(
             handle,
             "stop",
-            "Stop (reset to idle)",
+            stop_label,
             true,
             None::<&str>,
         )?;
@@ -247,7 +252,7 @@ pub fn handle_menu_event<R: Runtime>(
                             preset.break_minutes,
                             preset.cycles,
                             c.settings.auto_start_next_focus_after_break,
-                            false,
+                            c.settings.overtime_tracking_enabled,
                         ) {
                             c.timer = t;
                             c.focus_started_at = Some(Utc::now());
@@ -328,5 +333,10 @@ mod tests {
         assert_eq!(tray_tooltip(Phase::Idle), "focusdot · Idle");
         assert_eq!(tray_tooltip(Phase::Focus), "focusdot · Focus");
         assert_eq!(tray_tooltip(Phase::Break), "focusdot · Break");
+    }
+
+    #[test]
+    fn tray_tooltip_includes_overtime_phase() {
+        assert_eq!(tray_tooltip(Phase::Overtime), "focusdot · Overtime");
     }
 }
