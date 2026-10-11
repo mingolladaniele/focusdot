@@ -2,6 +2,14 @@
 
 All notable changes to focusdot are documented here. Releases follow [Semantic Versioning](https://semver.org/).
 
+## [0.1.6] - 2026-10-11
+
+### Changed
+
+- **Settings behind a gear icon**: the gear in the header opens Settings in the same window, replacing the dashboard. The back arrow, the gear again or Esc return to the timer. The dashboard now shows only the timer, statistics and Manage presets.
+- Settings show the running countdown (e.g. `24:57 · paused`) and the app version.
+- Tray menu: **Open focusdot** shows the timer and **Settings** opens Settings directly. Clicking the tray icon always shows the timer.
+
 ## [0.1.5] - 2026-10-11
 
 ### Added
@@ -66,6 +74,7 @@ Earlier release — stability and UI fixes.
 
 Initial public release — system tray Pomodoro timer with presets, stats, and local history.
 
+[0.1.6]: https://github.com/mingolladaniele/focusdot/releases/tag/v0.1.6
 [0.1.5]: https://github.com/mingolladaniele/focusdot/releases/tag/v0.1.5
 [0.1.4]: https://github.com/mingolladaniele/focusdot/releases/tag/v0.1.4
 [0.1.3]: https://github.com/mingolladaniele/focusdot/releases/tag/v0.1.3
