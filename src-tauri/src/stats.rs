@@ -65,8 +65,13 @@ pub fn calculate_stats(history: &History, now: DateTime<Utc>) -> Stats {
         .iter()
         .map(|session| session.started_at.with_timezone(&Local).date_naive())
         .collect();
+    // A streak stays alive until the end of today, even before today's first session.
     let mut current_streak_days = 0u32;
-    let mut cursor = today;
+    let mut cursor = if session_dates.contains(&today) {
+        today
+    } else {
+        today.pred_opt().unwrap_or(today)
+    };
     while session_dates.contains(&cursor) {
         current_streak_days += 1;
         cursor = match cursor.checked_sub_signed(Duration::days(1)) {

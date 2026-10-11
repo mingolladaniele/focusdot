@@ -111,12 +111,32 @@ fn calculates_streak_days() {
 }
 
 #[test]
-fn streak_is_zero_when_no_session_today() {
+fn streak_survives_until_first_session_of_today() {
+    use chrono::TimeZone;
+    let now = Utc.with_ymd_and_hms(2026, 4, 30, 12, 0, 0).unwrap();
+    let history = History {
+        sessions: vec![
+            FocusSession {
+                started_at: now - chrono::Duration::days(1),
+                duration_minutes: 25,
+            },
+            FocusSession {
+                started_at: now - chrono::Duration::days(2),
+                duration_minutes: 25,
+            },
+        ],
+    };
+    let stats = calculate_stats(&history, now);
+    assert_eq!(stats.current_streak_days, 2);
+}
+
+#[test]
+fn streak_is_zero_when_yesterday_was_missed() {
     use chrono::TimeZone;
     let now = Utc.with_ymd_and_hms(2026, 4, 30, 12, 0, 0).unwrap();
     let history = History {
         sessions: vec![FocusSession {
-            started_at: now - chrono::Duration::days(1),
+            started_at: now - chrono::Duration::days(2),
             duration_minutes: 25,
         }],
     };
