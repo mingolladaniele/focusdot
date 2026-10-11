@@ -159,3 +159,47 @@ fn upsert_with_unknown_id_returns_not_found() {
 
     assert_eq!(err, PresetError::NotFound);
 }
+
+#[test]
+fn default_store_has_a_pomodoro_preset() {
+    let store = PresetStore::with_defaults();
+    let p = store.quick_start().expect("default preset");
+    assert_eq!(p.name, "Pomodoro");
+    assert_eq!(p.focus_minutes, 25);
+    assert_eq!(p.break_minutes, 5);
+}
+
+#[test]
+fn quick_start_prefers_last_used_then_first() {
+    let mut store = PresetStore::default();
+    assert!(store.quick_start().is_none());
+    let input = |name: &str| PresetInput {
+        id: None,
+        name: name.to_string(),
+        focus_minutes: 25,
+        break_minutes: 5,
+        cycles: 1,
+    };
+    let a = store.upsert(input("A")).unwrap();
+    let b = store.upsert(input("B")).unwrap();
+    assert_eq!(store.quick_start().unwrap().id, a.id);
+
+    store.mark_used(b.id);
+    assert_eq!(store.quick_start().unwrap().id, b.id);
+
+    store.remove(b.id);
+    assert_eq!(store.quick_start().unwrap().id, a.id);
+}
+
+#[test]
+fn last_used_round_trips_and_is_optional() {
+    let mut store = PresetStore::with_defaults();
+    let id = store.quick_start().unwrap().id;
+    store.mark_used(id);
+    let json = serde_json::to_string(&store).unwrap();
+    let back: PresetStore = serde_json::from_str(&json).unwrap();
+    assert_eq!(back, store);
+
+    let legacy: PresetStore = serde_json::from_str(r#"{"presets":[]}"#).unwrap();
+    assert!(legacy.quick_start().is_none());
+}
