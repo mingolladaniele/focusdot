@@ -2,6 +2,28 @@
 
 All notable changes to focusdot are documented here. Releases follow [Semantic Versioning](https://semver.org/).
 
+## [0.1.5] - 2026-10-11
+
+### Added
+
+- **Start without setup**: on first launch a **Pomodoro** preset (25 min focus / 5 min break) is created, and the idle timer card shows it with a one-click **Start** button.
+- **Quick start**: Start (dashboard) and the new first tray entry **Start <preset>** use the last preset you started.
+- **Live tray tooltip**: shows minutes left, current cycle and paused state, e.g. `focusdot · Focus · 12 min left · 2/4 · paused`.
+- Multi-cycle sessions show the current cycle in the dashboard (`Focus session · 2 of 4`).
+- `FOCUSDOT_DATA_DIR` environment variable to run focusdot on a throwaway profile for testing.
+
+### Changed
+
+- **Reset** history, deleting a preset, and starting a preset while a session runs now need a second click within 3 seconds.
+- During overtime the Stop button reads **Finish focus**, matching what it does (log the session and start the break).
+- New preset form is prefilled with 25 / 5.
+- Statistics reload when the dashboard window regains focus.
+
+### Fixed
+
+- Day streak no longer shows 0 in the morning before the first session of the day.
+- Timer no longer drifts over long sessions and keeps counting while Windows is suspended.
+
 ## [0.1.4] - 2026-06-12
 
 ### Added
@@ -40,6 +62,7 @@ Earlier release — stability and UI fixes.
 
 Initial public release — system tray Pomodoro timer with presets, stats, and local history.
 
+[0.1.5]: https://github.com/mingolladaniele/focusdot/releases/tag/v0.1.5
 [0.1.4]: https://github.com/mingolladaniele/focusdot/releases/tag/v0.1.4
 [0.1.3]: https://github.com/mingolladaniele/focusdot/releases/tag/v0.1.3
 [0.1.2]: https://github.com/mingolladaniele/focusdot/releases/tag/v0.1.2
