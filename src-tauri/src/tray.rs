@@ -8,7 +8,7 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 use uuid::Uuid;
 
 use crate::state::AppState;
-use crate::timer::Phase;
+use crate::timer::{Phase, TimerSnapshot};
 use crate::window_layout::show_main_window_bottom_right;
 
 const ICON_SIZE: u32 = 32;
@@ -58,14 +58,30 @@ pub fn icon_for_phase(phase: Phase) -> Image<'static> {
     }
 }
 
-/// Tooltip shown when hovering the tray icon (Windows / macOS; Linux unsupported by tray-icon).
-fn tray_tooltip(phase: Phase) -> &'static str {
-    match phase {
-        Phase::Idle => "focusdot · Idle",
-        Phase::Focus => "focusdot · Focus",
-        Phase::Overtime => "focusdot · Overtime",
-        Phase::Break => "focusdot · Break",
+/// Tooltip shown when hovering the tray icon (Windows / macOS; Linux unsupported by tray-icon),
+/// e.g. `focusdot · Focus · 12 min left · 2/4`.
+pub fn tray_tooltip(snapshot: &TimerSnapshot) -> String {
+    let mut parts = vec!["focusdot".to_string()];
+    match snapshot.phase {
+        Phase::Idle => parts.push("Idle".to_string()),
+        Phase::Focus | Phase::Break => {
+            let label = if snapshot.phase == Phase::Focus { "Focus" } else { "Break" };
+            parts.push(label.to_string());
+            parts.push(format!("{} min left", snapshot.remaining_seconds.div_ceil(60)));
+        }
+        Phase::Overtime => {
+            parts.push("Overtime".to_string());
+            parts.push(format!("+{} min", snapshot.overtime_seconds / 60));
+        }
     }
+    if snapshot.phase != Phase::Idle && snapshot.total_cycles > 1 {
+        let current = snapshot.total_cycles - snapshot.cycles_remaining;
+        parts.push(format!("{}/{}", current, snapshot.total_cycles));
+    }
+    if snapshot.phase != Phase::Idle && !snapshot.running {
+        parts.push("paused".to_string());
+    }
+    parts.join(" · ")
 }
 
 /// Build root tray menu (presets submenu + controls).
@@ -77,6 +93,7 @@ pub fn build_root_menu<R: Runtime>(
     let phase = core.timer.phase();
     let running = core.timer.is_running();
     let presets_snapshot = core.presets.all().to_vec();
+    let quick = core.presets.quick_start().cloned();
     drop(core);
 
     let mut items: Vec<Box<dyn IsMenuItem<R>>> = Vec::new();
@@ -93,6 +110,11 @@ pub fn build_root_menu<R: Runtime>(
     }
 
     if phase == Phase::Idle {
+        if let Some(p) = &quick {
+            let text = format!("Start {} ({}m focus / {}m break)", p.name, p.focus_minutes, p.break_minutes);
+            let start = MenuItem::with_id(handle, "quick_start", text, true, None::<&str>)?;
+            items.push(Box::new(start));
+        }
         let preset_items: Vec<MenuItem<R>> = presets_snapshot
             .iter()
             .map(|p| {
@@ -242,50 +264,52 @@ pub fn handle_menu_event<R: Runtime>(
                 let _ = app.emit("timer-tick", &snap);
             }
         }
+        "quick_start" => {
+            start_and_notify(app, state, crate::quick_start_in_core);
+        }
         s if s.starts_with("preset:") => {
-            let rest = s.trim_start_matches("preset:");
-            if let Ok(uid) = Uuid::parse_str(rest) {
-                if let Ok(mut c) = state.inner.lock() {
-                    if let Some(preset) = c.presets.all().iter().find(|p| p.id == uid).cloned() {
-                        if let Ok(t) = c.timer.clone().stop().start_focus(
-                            preset.focus_minutes,
-                            preset.break_minutes,
-                            preset.cycles,
-                            c.settings.auto_start_next_focus_after_break,
-                            c.settings.overtime_tracking_enabled,
-                        ) {
-                            c.timer = t;
-                            c.focus_started_at = Some(Utc::now());
-                        }
-                    }
-                }
-            }
-            let _ = set_tray_icon_phase(app, Phase::Focus);
-            let _ = refresh_tray_menu(app, state);
-            if let Ok(c) = state.inner.lock() {
-                let snap = c.timer.snapshot();
-                drop(c);
-                let _ = app.emit("timer-tick", &snap);
+            if let Ok(uid) = Uuid::parse_str(s.trim_start_matches("preset:")) {
+                start_and_notify(app, state, |core| crate::start_preset_in_core(core, uid));
             }
         }
         _ => {}
     }
 }
 
+fn start_and_notify<R: Runtime>(
+    app: &AppHandle<R>,
+    state: &Arc<AppState>,
+    start: impl FnOnce(&mut crate::state::Core) -> Result<TimerSnapshot, String>,
+) {
+    let snap = {
+        let mut c = match state.inner.lock() {
+            Ok(g) => g,
+            Err(_) => return,
+        };
+        match start(&mut c) {
+            Ok(snap) => snap,
+            Err(_) => return,
+        }
+    };
+    let _ = set_tray_icon_phase(app, snap.phase);
+    let _ = refresh_tray_menu(app, state);
+    let _ = app.emit("timer-tick", &snap);
+}
+
 /// First tray install (setup).
 pub fn install_tray<R: Runtime>(app: &mut tauri::App<R>, state: Arc<AppState>) -> tauri::Result<()> {
     let handle = app.handle().clone();
     let menu = build_root_menu(&handle, &state)?;
-    let phase = {
+    let snapshot = {
         let core = state.inner.lock().expect("state mutex poisoned");
-        core.timer.phase()
+        core.timer.snapshot()
     };
-    let icon = icon_for_phase(phase);
+    let icon = icon_for_phase(snapshot.phase);
 
     let state_for_menu = state.clone();
     TrayIconBuilder::with_id("focusdot_tray")
         .icon(icon)
-        .tooltip(tray_tooltip(phase))
+        .tooltip(tray_tooltip(&snapshot))
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_tray_icon_event(|tray, event| {
@@ -310,8 +334,17 @@ pub fn install_tray<R: Runtime>(app: &mut tauri::App<R>, state: Arc<AppState>) -
 
 pub fn refresh_tray_menu<R: Runtime>(app: &AppHandle<R>, state: &Arc<AppState>) -> tauri::Result<()> {
     let menu = build_root_menu(app, state)?;
+    let snapshot = state.inner.lock().expect("state mutex poisoned").timer.snapshot();
     if let Some(tray) = app.tray_by_id("focusdot_tray") {
         tray.set_menu(Some(menu))?;
+        let _ = tray.set_tooltip(Some(tray_tooltip(&snapshot)));
+    }
+    Ok(())
+}
+
+pub fn set_tray_tooltip<R: Runtime>(app: &AppHandle<R>, text: &str) -> tauri::Result<()> {
+    if let Some(tray) = app.tray_by_id("focusdot_tray") {
+        tray.set_tooltip(Some(text))?;
     }
     Ok(())
 }
@@ -319,24 +352,46 @@ pub fn refresh_tray_menu<R: Runtime>(app: &AppHandle<R>, state: &Arc<AppState>) 
 pub fn set_tray_icon_phase<R: Runtime>(app: &AppHandle<R>, phase: Phase) -> tauri::Result<()> {
     if let Some(tray) = app.tray_by_id("focusdot_tray") {
         tray.set_icon(Some(icon_for_phase(phase)))?;
-        let _ = tray.set_tooltip(Some(tray_tooltip(phase)));
     }
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{tray_tooltip, Phase};
+    use super::tray_tooltip;
+    use crate::timer::Timer;
 
     #[test]
-    fn tray_tooltip_includes_app_name_and_phase() {
-        assert_eq!(tray_tooltip(Phase::Idle), "focusdot · Idle");
-        assert_eq!(tray_tooltip(Phase::Focus), "focusdot · Focus");
-        assert_eq!(tray_tooltip(Phase::Break), "focusdot · Break");
+    fn tooltip_idle() {
+        assert_eq!(tray_tooltip(&Timer::new().snapshot()), "focusdot · Idle");
     }
 
     #[test]
-    fn tray_tooltip_includes_overtime_phase() {
-        assert_eq!(tray_tooltip(Phase::Overtime), "focusdot · Overtime");
+    fn tooltip_shows_minutes_left_rounded_up() {
+        let t = Timer::new().start_focus(25, 5, 1, false, false).unwrap().tick(30).timer;
+        assert_eq!(tray_tooltip(&t.snapshot()), "focusdot · Focus · 25 min left");
+        let t = t.tick(31).timer;
+        assert_eq!(tray_tooltip(&t.snapshot()), "focusdot · Focus · 24 min left");
+    }
+
+    #[test]
+    fn tooltip_shows_cycle_and_pause() {
+        let t = Timer::new().start_focus(25, 5, 4, false, false).unwrap().pause().unwrap();
+        assert_eq!(
+            tray_tooltip(&t.snapshot()),
+            "focusdot · Focus · 25 min left · 1/4 · paused"
+        );
+    }
+
+    #[test]
+    fn tooltip_overtime() {
+        let t = Timer::new()
+            .start_focus(1, 5, 1, false, true)
+            .unwrap()
+            .tick(60)
+            .timer
+            .tick(125)
+            .timer;
+        assert_eq!(tray_tooltip(&t.snapshot()), "focusdot · Overtime · +2 min");
     }
 }

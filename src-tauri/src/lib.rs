@@ -12,7 +12,7 @@ mod window_layout;
 
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use chrono::Utc;
 use tauri::path::BaseDirectory;
@@ -25,10 +25,18 @@ use crate::state::AppState;
 use crate::stats::Stats;
 use crate::storage::save_json;
 use crate::timer::{should_emit_periodic_timer_tick, total_focus_duration_minutes, Phase, TimerSnapshot};
-use crate::tray::{install_tray, refresh_tray_menu, set_tray_icon_phase, window_title_icon};
+use crate::tray::{
+    install_tray, refresh_tray_menu, set_tray_icon_phase, set_tray_tooltip, tray_tooltip,
+    window_title_icon,
+};
 use crate::window_layout::show_main_window_bottom_right;
 
+/// `FOCUSDOT_DATA_DIR` points the app at a throwaway profile (manual testing without
+/// touching real stats); otherwise data lives under AppData.
 fn data_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
+    if let Some(dir) = std::env::var_os("FOCUSDOT_DATA_DIR").filter(|d| !d.is_empty()) {
+        return Ok(dir.into());
+    }
     app.path()
         .resolve("FocusDot", BaseDirectory::AppData)
         .map_err(|e| e.to_string())
@@ -50,6 +58,45 @@ pub(crate) fn finalize_overtime_session(core: &mut crate::state::Core) -> TimerS
         .end_overtime_start_break()
         .expect("overtime -> break");
     core.timer.snapshot()
+}
+
+/// Starts a focus session from a preset (replacing any current session) and remembers it
+/// as the quick-start preset.
+pub(crate) fn start_preset_in_core(
+    core: &mut crate::state::Core,
+    id: uuid::Uuid,
+) -> Result<TimerSnapshot, String> {
+    let preset = core
+        .presets
+        .get(id)
+        .cloned()
+        .ok_or_else(|| "preset not found".to_string())?;
+    let timer = core
+        .timer
+        .clone()
+        .stop()
+        .start_focus(
+            preset.focus_minutes,
+            preset.break_minutes,
+            preset.cycles,
+            core.settings.auto_start_next_focus_after_break,
+            core.settings.overtime_tracking_enabled,
+        )
+        .map_err(|e| e.to_string())?;
+    core.timer = timer;
+    core.focus_started_at = Some(Utc::now());
+    core.presets.mark_used(id);
+    let _ = save_json(&core.presets_path, &core.presets);
+    Ok(core.timer.snapshot())
+}
+
+pub(crate) fn quick_start_in_core(core: &mut crate::state::Core) -> Result<TimerSnapshot, String> {
+    let id = core
+        .presets
+        .quick_start()
+        .map(|p| p.id)
+        .ok_or_else(|| "no presets".to_string())?;
+    start_preset_in_core(core, id)
 }
 
 #[tauri::command]
@@ -167,6 +214,12 @@ fn set_overtime_tracking_enabled(
 }
 
 #[tauri::command]
+fn get_quick_start_preset(state: tauri::State<'_, Arc<AppState>>) -> Result<Option<Preset>, String> {
+    let core = state.inner.lock().map_err(|e| e.to_string())?;
+    Ok(core.presets.quick_start().cloned())
+}
+
+#[tauri::command]
 fn start_preset(
     app: AppHandle,
     state: tauri::State<'_, Arc<AppState>>,
@@ -174,30 +227,22 @@ fn start_preset(
 ) -> Result<TimerSnapshot, String> {
     let snapshot = {
         let mut core = state.inner.lock().map_err(|e| e.to_string())?;
-        let preset = core
-            .presets
-            .all()
-            .iter()
-            .find(|p| p.id == id)
-            .cloned()
-            .ok_or_else(|| "preset not found".to_string())?;
-        let auto_next = core.settings.auto_start_next_focus_after_break;
-        let overtime = core.settings.overtime_tracking_enabled;
-        let timer = core
-            .timer
-            .clone()
-            .stop()
-            .start_focus(
-                preset.focus_minutes,
-                preset.break_minutes,
-                preset.cycles,
-                auto_next,
-                overtime,
-            )
-            .map_err(|e| e.to_string())?;
-        core.timer = timer;
-        core.focus_started_at = Some(Utc::now());
-        core.timer.snapshot()
+        start_preset_in_core(&mut core, id)?
+    };
+    set_tray_icon_phase(&app, Phase::Focus).map_err(|e| e.to_string())?;
+    refresh_tray_menu(&app, &*state).map_err(|e| e.to_string())?;
+    let _ = app.emit("timer-tick", &snapshot);
+    Ok(snapshot)
+}
+
+#[tauri::command]
+fn quick_start(
+    app: AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+) -> Result<TimerSnapshot, String> {
+    let snapshot = {
+        let mut core = state.inner.lock().map_err(|e| e.to_string())?;
+        quick_start_in_core(&mut core)?
     };
     set_tray_icon_phase(&app, Phase::Focus).map_err(|e| e.to_string())?;
     refresh_tray_menu(&app, &*state).map_err(|e| e.to_string())?;
@@ -285,15 +330,45 @@ fn skip_break(
     Ok(snapshot)
 }
 
+/// Converts wall-clock readings into whole elapsed seconds, carrying the sub-second remainder.
+pub struct WallClock {
+    last: SystemTime,
+    carry_ms: u128,
+}
+
+impl WallClock {
+    pub fn new(now: SystemTime) -> Self {
+        Self { last: now, carry_ms: 0 }
+    }
+
+    /// Whole seconds elapsed since the previous call. A clock that moves backwards counts as 0.
+    pub fn advance(&mut self, now: SystemTime) -> u32 {
+        let delta = now.duration_since(self.last).unwrap_or_default();
+        self.last = now;
+        self.carry_ms += delta.as_millis();
+        let secs = self.carry_ms / 1000;
+        self.carry_ms %= 1000;
+        u32::try_from(secs).unwrap_or(u32::MAX)
+    }
+}
+
 fn spawn_timer_loop(state: Arc<AppState>) {
+    // Elapsed time comes from the wall clock rather than counting sleeps, so the countdown
+    // neither drifts nor stalls while Windows is suspended.
+    let mut clock = WallClock::new(SystemTime::now());
+    let mut last_tooltip = String::new();
     thread::spawn(move || loop {
-        thread::sleep(Duration::from_secs(1));
+        thread::sleep(Duration::from_millis(250));
+        let elapsed = clock.advance(SystemTime::now());
+        if elapsed == 0 {
+            continue;
+        }
         let mut core = match state.inner.lock() {
             Ok(g) => g,
             Err(_) => continue,
         };
         let old_phase = core.timer.phase();
-        let tick_result = core.timer.clone().tick(1);
+        let tick_result = core.timer.clone().tick(elapsed);
         core.timer = tick_result.timer;
         let snapshot = core.timer.snapshot();
 
@@ -364,6 +439,11 @@ fn spawn_timer_loop(state: Arc<AppState>) {
         if should_emit_periodic_timer_tick(&snapshot) {
             let _ = state.app.emit("timer-tick", &snapshot);
         }
+        let tooltip = tray_tooltip(&snapshot);
+        if tooltip != last_tooltip {
+            let _ = set_tray_tooltip(&state.app, &tooltip);
+            last_tooltip = tooltip;
+        }
     });
 }
 
@@ -432,6 +512,8 @@ pub fn run() {
             set_notifications_enabled,
             set_overtime_tracking_enabled,
             start_preset,
+            get_quick_start_preset,
+            quick_start,
             pause_timer,
             resume_timer,
             stop_timer,
