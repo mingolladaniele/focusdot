@@ -14,11 +14,18 @@
           <span class="brand-dot" data-testid="brand-dot" data-phase="Idle"></span>
           <h1>focusdot</h1>
         </div>
-        <span class="status-pill" data-testid="status-pill" data-phase="Idle">
-          <span class="status-pulse" aria-hidden="true"></span>
-          <span class="status-text">Idle</span>
-        </span>
+        <div class="topbar-right">
+          <span class="status-pill" data-testid="status-pill" data-phase="Idle">
+            <span class="status-pulse" aria-hidden="true"></span>
+            <span class="status-text">Idle</span>
+          </span>
+          <button type="button" id="btn-settings" data-testid="btn-settings" class="icon-btn" aria-label="Settings" title="Settings" aria-pressed="false">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          </button>
+        </div>
       </header>
+
+      <div class="view" data-testid="dashboard-view">
 
       <!-- ============ TIMER ============ -->
       <section class="card timer-card" aria-labelledby="timer-title">
@@ -68,70 +75,6 @@
         </div>
       </section>
 
-      <!-- ============ SETTINGS ============ -->
-      <section class="card collapsible-card" aria-labelledby="settings-title">
-        <details class="collapsible" data-testid="settings-section">
-          <summary class="collapsible-trigger section-head">
-            <h2 id="settings-title">Settings</h2>
-            <span class="collapsible-chevron" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-            </span>
-          </summary>
-          <div class="collapsible-body">
-            <div class="toggle-list">
-              <label class="toggle">
-                <span class="toggle-text">
-                  <span class="toggle-label">Auto-start next focus after break</span>
-                  <span class="toggle-hint">When off, the timer stops after each break until you start again; you can still press Start focus now during a break to continue a multi-cycle plan.</span>
-                </span>
-                <span class="switch">
-                  <input type="checkbox" id="auto-start-next-focus" />
-                  <span class="switch-track"><span class="switch-thumb"></span></span>
-                </span>
-              </label>
-              <label class="toggle">
-                <span class="toggle-text">
-                  <span class="toggle-label">Overtime tracking</span>
-                  <span class="toggle-hint">When a focus block ends, keep counting extra time until you press Finish focus. The full session is logged then and break starts.</span>
-                </span>
-                <span class="switch">
-                  <input type="checkbox" id="overtime-tracking" />
-                  <span class="switch-track"><span class="switch-thumb"></span></span>
-                </span>
-              </label>
-              <label class="toggle">
-                <span class="toggle-text">
-                  <span class="toggle-label">Session notifications</span>
-                  <span class="toggle-hint">Desktop alerts when a focus or break block ends.</span>
-                </span>
-                <span class="switch">
-                  <input type="checkbox" id="notifications-enabled" />
-                  <span class="switch-track"><span class="switch-thumb"></span></span>
-                </span>
-              </label>
-              <label class="toggle">
-                <span class="toggle-text">
-                  <span class="toggle-label">Launch on Windows startup</span>
-                  <span class="toggle-hint">Open focusdot when you sign in.</span>
-                </span>
-                <span class="switch">
-                  <input type="checkbox" id="launch-startup" />
-                  <span class="switch-track"><span class="switch-thumb"></span></span>
-                </span>
-              </label>
-              <div class="toggle toggle--action">
-                <span class="toggle-text">
-                  <span class="toggle-label">Focus history</span>
-                  <span class="toggle-hint">Delete every logged session. Statistics start from zero.</span>
-                </span>
-                <button type="button" id="reset-history" class="btn-link-danger" title="Delete all focus history">Reset</button>
-              </div>
-            </div>
-          </div>
-        </details>
-      </section>
 
       <!-- ============ PRESETS ============ -->
       <section class="card collapsible-card" aria-labelledby="presets-title">
@@ -174,6 +117,68 @@
             <p id="preset-error" class="error" role="alert"></p>
           </div>
         </details>
+      </section>
+      </div>
+
+      <!-- ============ SETTINGS ============ -->
+      <section class="view settings-view" data-testid="settings-view" aria-labelledby="settings-title" hidden>
+        <div class="settings-head">
+          <button type="button" id="btn-settings-back" data-testid="btn-settings-back" class="icon-btn" aria-label="Back to timer" title="Back (Esc)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <h2 id="settings-title">Settings</h2>
+          <span class="settings-timer" data-testid="settings-timer" hidden></span>
+        </div>
+        <div class="toggle-list">
+          <label class="toggle">
+            <span class="toggle-text">
+              <span class="toggle-label">Auto-start next focus after break</span>
+              <span class="toggle-hint">When off, the timer stops after each break until you start again; you can still press Start focus now during a break to continue a multi-cycle plan.</span>
+            </span>
+            <span class="switch">
+              <input type="checkbox" id="auto-start-next-focus" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+          <label class="toggle">
+            <span class="toggle-text">
+              <span class="toggle-label">Overtime tracking</span>
+              <span class="toggle-hint">When a focus block ends, keep counting extra time until you press Finish focus. The full session is logged then and break starts.</span>
+            </span>
+            <span class="switch">
+              <input type="checkbox" id="overtime-tracking" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+          <label class="toggle">
+            <span class="toggle-text">
+              <span class="toggle-label">Session notifications</span>
+              <span class="toggle-hint">Desktop alerts when a focus or break block ends.</span>
+            </span>
+            <span class="switch">
+              <input type="checkbox" id="notifications-enabled" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+          <label class="toggle">
+            <span class="toggle-text">
+              <span class="toggle-label">Launch on Windows startup</span>
+              <span class="toggle-hint">Open focusdot when you sign in.</span>
+            </span>
+            <span class="switch">
+              <input type="checkbox" id="launch-startup" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+          </label>
+          <div class="toggle toggle--action">
+            <span class="toggle-text">
+              <span class="toggle-label">Focus history</span>
+              <span class="toggle-hint">Delete every logged session. Statistics start from zero.</span>
+            </span>
+            <button type="button" id="reset-history" class="btn-link-danger" title="Delete all focus history">Reset</button>
+          </div>
+        </div>
+        <p class="app-version" data-testid="app-version"></p>
       </section>
     </main>
 

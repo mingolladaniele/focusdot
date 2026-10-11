@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
 import { parsePresetForm } from "./presets";
 import {
@@ -240,6 +241,13 @@ export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
   if (dot) {
     dot.setAttribute("data-phase", snapshot.phase);
   }
+  const settingsTimer = document.querySelector<HTMLElement>("[data-testid='settings-timer']");
+  if (settingsTimer) {
+    settingsTimer.hidden = idle;
+    if (!idle && timeEl) {
+      settingsTimer.textContent = `${timeEl.textContent}${snapshot.running ? "" : " · paused"}`;
+    }
+  }
   const statusPill = document.querySelector<HTMLElement>("[data-testid='status-pill']");
   const statusText = statusPill?.querySelector<HTMLElement>(".status-text");
   const railFill = document.querySelector<HTMLElement>(".timer-card .rail-fill");
@@ -281,6 +289,47 @@ export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
   if (chips) chips.hidden = !idle;
 }
 
+export type View = "dashboard" | "settings";
+
+/** Settings replace the dashboard in the same window, so there is never a second window to find. */
+export function showView(view: View): void {
+  const dashboard = document.querySelector<HTMLElement>("[data-testid='dashboard-view']");
+  const settings = document.querySelector<HTMLElement>("[data-testid='settings-view']");
+  const gear = document.querySelector<HTMLButtonElement>("[data-testid='btn-settings']");
+  if (dashboard) dashboard.hidden = view !== "dashboard";
+  if (settings) settings.hidden = view !== "settings";
+  gear?.setAttribute("aria-pressed", String(view === "settings"));
+  document.getElementById("app")?.scrollIntoView?.({ block: "start" });
+}
+
+function currentView(): View {
+  const settings = document.querySelector<HTMLElement>("[data-testid='settings-view']");
+  return settings && !settings.hidden ? "settings" : "dashboard";
+}
+
+async function bindViews(): Promise<void> {
+  const gear = document.querySelector<HTMLButtonElement>("[data-testid='btn-settings']");
+  const back = document.querySelector<HTMLButtonElement>("[data-testid='btn-settings-back']");
+  gear?.addEventListener("click", () => showView(currentView() === "settings" ? "dashboard" : "settings"));
+  back?.addEventListener("click", () => showView("dashboard"));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && currentView() === "settings") showView("dashboard");
+  });
+  // The tray picks the view: icon click and "Open focusdot" show the timer, "Settings" the settings.
+  await listen<View>("show-view", (e) => {
+    if (e.payload === "dashboard" || e.payload === "settings") showView(e.payload);
+  });
+
+  const versionEl = document.querySelector<HTMLElement>("[data-testid='app-version']");
+  if (versionEl) {
+    try {
+      versionEl.textContent = `focusdot v${await getVersion()}`;
+    } catch {
+      versionEl.textContent = "";
+    }
+  }
+}
+
 function setPresetEditingMode(editing: boolean): void {
   const submit = document.querySelector<HTMLButtonElement>("#preset-submit");
   const cancel = document.querySelector<HTMLButtonElement>("#preset-cancel-edit");
@@ -299,6 +348,7 @@ export async function bootstrap(): Promise<void> {
   await bindAppSettings();
   await bindAutostart();
   bindTimerControls();
+  await bindViews();
   // Stats are day-based; reopening the dashboard tomorrow must not show yesterday's numbers.
   window.addEventListener("focus", () => {
     void loadStats();
