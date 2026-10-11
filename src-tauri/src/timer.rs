@@ -21,6 +21,9 @@ pub struct TimerSnapshot {
     pub focus_minutes: u32,
     pub break_minutes: u32,
     pub cycles_remaining: u32,
+    /// Preset cycle count for the current session (0 when idle).
+    #[serde(default)]
+    pub total_cycles: u32,
     pub auto_start_next: bool,
     pub overtime_seconds: u32,
 }
@@ -179,6 +182,7 @@ impl Timer {
             self.phase = Phase::Idle;
             self.remaining_seconds = 0;
             self.cycles_remaining = 0;
+            self.total_cycles = 0;
             self.auto_start_next = false;
             self.running = false;
         }
@@ -297,6 +301,7 @@ impl Timer {
             focus_minutes: self.focus_minutes,
             break_minutes: self.break_minutes,
             cycles_remaining: self.cycles_remaining,
+            total_cycles: self.total_cycles,
             auto_start_next: self.auto_start_next,
             overtime_seconds: self.overtime_seconds,
         }

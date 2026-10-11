@@ -177,6 +177,7 @@ fn periodic_tick_emits_only_when_not_idle_and_running() {
         focus_minutes: 0,
         break_minutes: 0,
         cycles_remaining: 0,
+        total_cycles: 0,
         auto_start_next: false,
         overtime_seconds: 0,
     };
@@ -369,4 +370,17 @@ fn end_overtime_start_break_errors_when_not_overtime() {
         .end_overtime_start_break()
         .expect_err("not overtime");
     assert_eq!(err, TimerError::WrongPhase);
+}
+
+#[test]
+fn wall_clock_counts_whole_seconds_and_carries_remainder() {
+    use std::time::{Duration, SystemTime};
+    let t0 = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000);
+    let mut clock = focusdot::WallClock::new(t0);
+    assert_eq!(clock.advance(t0 + Duration::from_millis(600)), 0);
+    assert_eq!(clock.advance(t0 + Duration::from_millis(1_300)), 1);
+    // 2h suspend counts in full.
+    assert_eq!(clock.advance(t0 + Duration::from_millis(1_300 + 7_200_000)), 7_200);
+    // Clock moved backwards: nothing elapses.
+    assert_eq!(clock.advance(t0), 0);
 }

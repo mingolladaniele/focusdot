@@ -33,7 +33,13 @@ impl AppState {
         settings_path: PathBuf,
     ) -> Self {
         let history = crate::storage::load_json::<History>(&history_path).unwrap_or_default();
-        let presets = crate::storage::load_json::<PresetStore>(&presets_path).unwrap_or_default();
+        let presets = if presets_path.exists() {
+            crate::storage::load_json::<PresetStore>(&presets_path).unwrap_or_default()
+        } else {
+            let seeded = PresetStore::with_defaults();
+            let _ = crate::storage::save_json(&presets_path, &seeded);
+            seeded
+        };
         let settings = crate::storage::load_json::<AppSettings>(&settings_path).unwrap_or_default();
 
         Self {

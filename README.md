@@ -72,6 +72,15 @@ Keep that terminal open. Vite starts first, then Tauri launches the app. Left-cl
 
 To stop: `Ctrl+C` in the dev terminal.
 
+### Testing with a throwaway profile
+
+Set `FOCUSDOT_DATA_DIR` to keep test sessions out of your real stats. focusdot then reads and writes `history.json`, `presets.json` and `settings.json` in that folder instead of AppData. Quit the running focusdot first, because single-instance mode hands a second launch over to the instance that is already open.
+
+```powershell
+$env:FOCUSDOT_DATA_DIR = "$env:TEMP\focusdot-test"
+& "C:\Program Files\focusdot\focusdot.exe"
+```
+
 ### Other commands
 
 | Goal | Command |

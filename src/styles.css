@@ -272,6 +272,16 @@ details[open] .collapsible-trigger { padding-bottom: 12px; }
 }
 
 /* ============ BUTTONS ============ */
+[hidden] { display: none !important; }
+
+/* First click of a destructive action: waiting for a confirming second click. */
+.is-armed,
+.is-armed:hover:not(:disabled) {
+  color: var(--danger) !important;
+  background: color-mix(in oklab, var(--danger) 15%, transparent) !important;
+}
+.btn-link-danger.is-armed { padding: 2px 6px; border-radius: 6px; }
+
 .btn {
   display: inline-flex;
   align-items: center;
