@@ -237,9 +237,12 @@ fn skip_break_mid_multi_cycle_without_auto_start_still_goes_to_focus() {
 #[test]
 fn skip_break_on_final_break_goes_idle() {
     let timer = Timer::new()
-        .start_focus(1, 1, 1, true, false)
+        .start_focus(1, 1, 2, true, false)
         .expect("starts");
-    let timer = timer.tick(60).timer; // focus -> break (cycles_remaining == 0)
+    let timer = timer.tick(60).timer; // focus 1 -> break
+    let timer = timer.tick(60).timer; // break -> focus 2
+    let timer = timer.tick(60).timer; // focus 2 -> final break (cycles_remaining == 0)
+    assert_eq!(timer.phase(), Phase::Break);
 
     let timer = timer.skip_break().expect("skip break");
 
@@ -383,4 +386,27 @@ fn wall_clock_counts_whole_seconds_and_carries_remainder() {
     assert_eq!(clock.advance(t0 + Duration::from_millis(1_300 + 7_200_000)), 7_200);
     // Clock moved backwards: nothing elapses.
     assert_eq!(clock.advance(t0), 0);
+}
+
+#[test]
+fn skip_break_repeats_single_cycle_preset_with_auto_start() {
+    let timer = Timer::new().start_focus(1, 1, 1, true, false).expect("starts");
+    let timer = timer.tick(60).timer; // focus -> break
+    assert!(timer.snapshot().break_continues_to_focus());
+
+    let timer = timer.skip_break().expect("skip break");
+
+    assert_eq!(timer.phase(), Phase::Focus);
+    assert!(timer.is_running());
+}
+
+#[test]
+fn skip_break_single_cycle_without_auto_start_goes_idle() {
+    let timer = Timer::new().start_focus(1, 1, 1, false, false).expect("starts");
+    let timer = timer.tick(60).timer;
+    assert!(!timer.snapshot().break_continues_to_focus());
+
+    let timer = timer.skip_break().expect("skip break");
+
+    assert_eq!(timer.phase(), Phase::Idle);
 }

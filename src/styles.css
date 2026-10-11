@@ -267,9 +267,39 @@ details[open] .collapsible-trigger { padding-bottom: 12px; }
 
 .controls {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 6px;
 }
+.btn-main {
+  flex: 1;
+  justify-content: center;
+  padding: 11px 16px;
+  font-size: 14px;
+}
+.btn-main .btn-icon svg { width: 100%; height: 100%; display: block; }
+.btn-stop { padding: 6px 2px; }
+
+/* Idle: other presets start in one click. */
+.preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.preset-chips:empty { display: none; }
+.chip {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.chip:hover { background: var(--surface-3); color: var(--text); }
+.chip small { color: var(--dim); margin-left: 4px; font-size: 11px; }
+.chip--add { border-style: dashed; }
 
 /* ============ BUTTONS ============ */
 [hidden] { display: none !important; }
@@ -417,10 +447,6 @@ details[open] .collapsible-trigger { padding-bottom: 12px; }
 }
 .preset-icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-.preset-icon-btn--start:hover:not(:disabled) {
-  color: var(--accent);
-  background: var(--accent-soft);
-}
 .preset-icon-btn--edit:hover:not(:disabled) {
   color: var(--text);
   background: var(--surface-3);
@@ -502,35 +528,52 @@ details[open] .collapsible-trigger { padding-bottom: 12px; }
 }
 
 /* ============ STATS ============ */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+/* Today's numbers lead; longer periods sit in one quiet row underneath. */
+.stats-card { gap: 14px; }
+.stats-today {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
 }
-.stat-tile {
-  padding: 12px;
-  background: oklch(0.20 0.005 250);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-md);
+.stats-today-main,
+.stats-streak {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
 }
-.stat-value {
+.stats-streak { align-items: flex-end; }
+.stats-today-value,
+.stats-streak-value,
+.stats-period-value {
   font-family: "JetBrains Mono", "SF Mono", "Cascadia Mono", ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 22px;
-  font-weight: 400;
   letter-spacing: -0.02em;
   color: var(--text);
+  line-height: 1;
 }
-.stat-label {
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dim);
+.stats-today-value { font-size: 28px; }
+.stats-streak-value { font-size: 20px; }
+.stats-period-value { font-size: 15px; }
+.stats-today-meta,
+.stats-streak-label { font-size: 12px; color: var(--muted); }
+.stats-periods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
 }
+.stats-period {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 12px;
+  border-left: 1px solid var(--line-soft);
+  min-width: 0;
+}
+.stats-period:first-child { padding-left: 0; border-left: 0; }
+.stats-period-label { font-size: 11px; color: var(--dim); }
 
 /* ============ TOGGLES ============ */
 .toggle-list {
@@ -552,6 +595,7 @@ details[open] .collapsible-trigger { padding-bottom: 12px; }
   transition: background .12s;
 }
 .toggle:last-child { border-bottom: 0; }
+.toggle--action { cursor: default; }
 .toggle:hover { background: var(--surface-2); }
 .toggle-text {
   display: flex;
@@ -606,7 +650,6 @@ details[open] .collapsible-trigger { padding-bottom: 12px; }
 
 /* ============ SMALL VIEWPORTS ============ */
 @media (max-width: 520px) {
-  .stats-grid    { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .preset-form   { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .preset-form > label.field:first-of-type { grid-column: 1 / -1; }
   .preset-form-actions { grid-column: 1 / -1; }

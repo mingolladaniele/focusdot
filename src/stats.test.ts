@@ -3,6 +3,7 @@ import {
   statFocusTodayValue,
   statPeriodMinutesValue,
   statSessionsTodayValue,
+  statSessionsWord,
   statStreakValue,
   statWeekValue
 } from "./stats";
@@ -35,7 +36,20 @@ describe("statPeriodMinutesValue", () => {
   it("formats period minutes as hours and minutes", () => {
     expect(statPeriodMinutesValue(0)).toBe("0h 0m");
     expect(statPeriodMinutesValue(80)).toBe("1h 20m");
-    expect(statPeriodMinutesValue(600)).toBe("10h 0m");
+    expect(statPeriodMinutesValue(599)).toBe("9h 59m");
+  });
+
+  it("drops minutes from 10 hours up", () => {
+    expect(statPeriodMinutesValue(600)).toBe("10h");
+    expect(statPeriodMinutesValue(3688)).toBe("61h");
+  });
+});
+
+describe("statSessionsWord", () => {
+  it("pluralises the session count", () => {
+    expect(statSessionsWord(0)).toBe("sessions");
+    expect(statSessionsWord(1)).toBe("session");
+    expect(statSessionsWord(2)).toBe("sessions");
   });
 });
 
