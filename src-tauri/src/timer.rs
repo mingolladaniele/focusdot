@@ -28,6 +28,14 @@ pub struct TimerSnapshot {
     pub overtime_seconds: u32,
 }
 
+impl TimerSnapshot {
+    /// Whether ending the current break (early or on time with auto-start) leads into another
+    /// focus block rather than back to Idle.
+    pub fn break_continues_to_focus(&self) -> bool {
+        self.cycles_remaining > 0 || (self.auto_start_next && self.total_cycles == 1)
+    }
+}
+
 /// Periodic `timer-tick` is only needed while a phase countdown is actively running.
 pub fn should_emit_periodic_timer_tick(snapshot: &TimerSnapshot) -> bool {
     snapshot.phase != Phase::Idle && snapshot.running
@@ -166,15 +174,15 @@ impl Timer {
         Ok(self)
     }
 
-    /// Ends the current break early. If another focus cycle remains (`cycles_remaining > 0`),
-    /// starts that focus immediately—regardless of `auto_start_next` (that flag only affects
-    /// automatic transition when the break countdown finishes).
+    /// Ends the current break early. Starts the next focus when another cycle remains
+    /// (regardless of `auto_start_next`) or when a single-cycle preset repeats via auto-start,
+    /// matching what the break countdown would do; otherwise returns to Idle.
     pub fn skip_break(mut self) -> Result<Self, TimerError> {
         if self.phase != Phase::Break {
             return Err(TimerError::WrongPhase);
         }
-        if self.cycles_remaining > 0 {
-            self.cycles_remaining -= 1;
+        if self.snapshot().break_continues_to_focus() {
+            self.cycles_remaining = self.cycles_remaining.saturating_sub(1);
             self.phase = Phase::Focus;
             self.remaining_seconds = self.focus_minutes * 60;
             self.running = true;

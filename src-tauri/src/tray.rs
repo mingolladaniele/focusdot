@@ -84,30 +84,35 @@ pub fn tray_tooltip(snapshot: &TimerSnapshot) -> String {
     parts.join(" · ")
 }
 
+/// Session controls for the tray menu, mirroring the dashboard: the primary action for the
+/// current state first, then Stop where it means something different from the primary.
+/// Breaks cannot be paused and overtime has a single exit, so neither offers Pause.
+pub fn session_menu_items(snapshot: &TimerSnapshot) -> Vec<(&'static str, &'static str)> {
+    match snapshot.phase {
+        Phase::Idle => vec![],
+        Phase::Focus if snapshot.running => vec![("pause", "Pause"), ("stop", "Stop")],
+        Phase::Focus => vec![("resume", "Resume"), ("stop", "Stop")],
+        Phase::Break if snapshot.break_continues_to_focus() => {
+            vec![("skip_break", "Start focus now"), ("stop", "Stop")]
+        }
+        Phase::Break => vec![("skip_break", "End break")],
+        Phase::Overtime => vec![("stop", "Finish focus")],
+    }
+}
+
 /// Build root tray menu (presets submenu + controls).
 pub fn build_root_menu<R: Runtime>(
     handle: &AppHandle<R>,
     state: &Arc<AppState>,
 ) -> tauri::Result<Menu<R>> {
     let core = state.inner.lock().expect("state mutex poisoned");
-    let phase = core.timer.phase();
-    let running = core.timer.is_running();
+    let snapshot = core.timer.snapshot();
+    let phase = snapshot.phase;
     let presets_snapshot = core.presets.all().to_vec();
     let quick = core.presets.quick_start().cloned();
     drop(core);
 
     let mut items: Vec<Box<dyn IsMenuItem<R>>> = Vec::new();
-
-    if phase == Phase::Break {
-        let skip = MenuItem::with_id(
-            handle,
-            "skip_break",
-            "Start focus now (skip break)",
-            true,
-            None::<&str>,
-        )?;
-        items.push(Box::new(skip));
-    }
 
     if phase == Phase::Idle {
         if let Some(p) = &quick {
@@ -132,34 +137,10 @@ pub fn build_root_menu<R: Runtime>(
             &preset_refs,
         )?;
         items.push(Box::new(presets));
-    } else if running {
-        let pause = MenuItem::with_id(
-            handle,
-            "pause",
-            "Pause (keep remaining time)",
-            true,
-            None::<&str>,
-        )?;
-        items.push(Box::new(pause));
-    } else {
-        let resume = MenuItem::with_id(handle, "resume", "Resume", true, None::<&str>)?;
-        items.push(Box::new(resume));
     }
 
-    if phase != Phase::Idle {
-        let stop_label = if phase == Phase::Overtime {
-            "Stop (end focus & start break)"
-        } else {
-            "Stop (reset to idle)"
-        };
-        let stop = MenuItem::with_id(
-            handle,
-            "stop",
-            stop_label,
-            true,
-            None::<&str>,
-        )?;
-        items.push(Box::new(stop));
+    for (id, label) in session_menu_items(&snapshot) {
+        items.push(Box::new(MenuItem::with_id(handle, id, label, true, None::<&str>)?));
     }
 
     let settings = MenuItem::with_id(handle, "settings", "Settings & dashboard", true, None::<&str>)?;
@@ -358,8 +339,31 @@ pub fn set_tray_icon_phase<R: Runtime>(app: &AppHandle<R>, phase: Phase) -> taur
 
 #[cfg(test)]
 mod tests {
-    use super::tray_tooltip;
+    use super::{session_menu_items, tray_tooltip};
     use crate::timer::Timer;
+
+    fn ids(t: &Timer) -> Vec<&'static str> {
+        session_menu_items(&t.snapshot()).into_iter().map(|(id, _)| id).collect()
+    }
+
+    #[test]
+    fn menu_offers_one_primary_action_per_state() {
+        let idle = Timer::new();
+        assert!(ids(&idle).is_empty());
+
+        let focus = Timer::new().start_focus(1, 1, 2, false, true).unwrap();
+        assert_eq!(ids(&focus), ["pause", "stop"]);
+        assert_eq!(ids(&focus.clone().pause().unwrap()), ["resume", "stop"]);
+
+        let brk = Timer::new().start_focus(1, 1, 2, false, false).unwrap().tick(60).timer;
+        assert_eq!(ids(&brk), ["skip_break", "stop"]);
+
+        let last_break = Timer::new().start_focus(1, 1, 1, false, false).unwrap().tick(60).timer;
+        assert_eq!(session_menu_items(&last_break.snapshot()), [("skip_break", "End break")]);
+
+        let overtime = focus.tick(60).timer;
+        assert_eq!(session_menu_items(&overtime.snapshot()), [("stop", "Finish focus")]);
+    }
 
     #[test]
     fn tooltip_idle() {
