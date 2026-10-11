@@ -17,11 +17,17 @@ export function statStreakValue(days: number): string {
   return String(days);
 }
 
-/** Tile primary value for focus minutes over a period (week, month, year) */
+/** Focus minutes over a period (week, month, year); minutes are dropped from 10h up */
 export function statPeriodMinutesValue(minutes: number): string {
   const hours = Math.floor(minutes / 60);
+  if (hours >= 10) return `${hours}h`;
   const remainingMinutes = minutes % 60;
   return `${hours}h ${remainingMinutes}m`;
+}
+
+/** Noun after the sessions-today count */
+export function statSessionsWord(count: number): string {
+  return count === 1 ? "session" : "sessions";
 }
 
 /** @deprecated alias — use statPeriodMinutesValue */

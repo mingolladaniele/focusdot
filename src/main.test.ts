@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyTimerSnapshot,
   bootstrap,
+  mainActionFor,
   shouldRefreshStatsAfterTick,
+  showsStop,
   type TimerSnapshot
 } from "./main";
 
@@ -40,11 +42,13 @@ beforeEach(() => {
         <p class="time" data-testid="timer-display">--:--</p>
         <div class="rail" aria-hidden="true"><div class="rail-fill" style="width:0%"></div></div>
         <div class="controls">
-          <button type="button" id="btn-pause" data-testid="btn-pause" class="btn btn-ghost">Pause</button>
-          <button type="button" id="btn-resume" data-testid="btn-resume" class="btn btn-primary">Resume</button>
-          <button type="button" id="btn-skip-break" data-testid="btn-skip-break" class="btn btn-ghost">Start focus now</button>
-          <button type="button" id="btn-stop" data-testid="btn-stop" class="btn btn-ghost">Stop</button>
+          <button type="button" id="btn-main" data-testid="btn-main" class="btn btn-primary btn-main">
+            <span class="btn-icon" aria-hidden="true"></span>
+            <span class="btn-label">Start</span>
+          </button>
+          <button type="button" id="btn-stop" data-testid="btn-stop" class="btn-link btn-stop" hidden>Stop</button>
         </div>
+        <div class="preset-chips" data-testid="preset-chips"></div>
       </section>
       <section class="card stats-card" aria-labelledby="stats-title">
         <div class="section-head">
@@ -209,7 +213,8 @@ describe("overtime UI", () => {
     expect(screen.getByTestId("timer-phase").textContent).toBe("Overtime");
     expect(screen.getByTestId("timer-display").textContent).toBe("+02:05");
     expect(screen.getByTestId("brand-dot").getAttribute("data-phase")).toBe("Overtime");
-    expect((screen.getByTestId("btn-stop") as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByTestId("btn-main").textContent?.trim()).toBe("Finish focus");
+    expect((screen.getByTestId("btn-stop") as HTMLButtonElement).hidden).toBe(true);
   });
 
   it("refreshes stats when overtime ends into break", () => {
@@ -265,10 +270,10 @@ describe("settings window", () => {
     expect(screen.getByTestId("timer-phase").textContent).toBe("Focus session");
     expect(screen.getByTestId("timer-display").textContent).toBe("02:05");
     expect(screen.getByTestId("brand-dot").getAttribute("data-phase")).toBe("Focus");
-    expect((screen.getByTestId("btn-skip-break") as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId("btn-main").textContent?.trim()).toBe("Pause");
   });
 
-  it("enables Start focus now only during Break", () => {
+  it("offers Start focus now during a break with cycles left", () => {
     applyTimerSnapshot({
       phase: "Break",
       running: true,
@@ -280,7 +285,8 @@ describe("settings window", () => {
       overtime_seconds: 0
     });
 
-    expect((screen.getByTestId("btn-skip-break") as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByTestId("btn-main").textContent?.trim()).toBe("Start focus now");
+    expect((screen.getByTestId("btn-stop") as HTMLButtonElement).hidden).toBe(false);
   });
 
   it("updates status pill and progress rail from snapshot", () => {
@@ -292,8 +298,7 @@ describe("settings window", () => {
         <p class="phase" data-testid="timer-phase">Idle</p>
         <p class="time" data-testid="timer-display">--:--</p>
         <div class="rail"><div class="rail-fill" style="width:0%"></div></div>
-        <button data-testid="btn-pause"></button>
-        <button data-testid="btn-resume"></button>
+        <button data-testid="btn-main"><span class="btn-label"></span></button>
         <button data-testid="btn-stop"></button>
       </section>
     </main>`;
@@ -354,12 +359,12 @@ describe("settings window", () => {
     });
 
     await bootstrap();
-    await userEvent.click(screen.getByTestId("btn-pause"));
+    await userEvent.click(screen.getByTestId("btn-main"));
 
     expect(invoke).toHaveBeenCalledWith("pause_timer");
   });
 
-  it("invokes skip_break when Start focus now is clicked", async () => {
+  it("invokes skip_break when End break is clicked", async () => {
     invoke.mockImplementation((cmd: string) => {
       if (cmd === "get_stats") {
         return Promise.resolve({
@@ -396,7 +401,8 @@ describe("settings window", () => {
     });
 
     await bootstrap();
-    await userEvent.click(screen.getByTestId("btn-skip-break"));
+    expect(screen.getByTestId("btn-main").textContent?.trim()).toBe("End break");
+    await userEvent.click(screen.getByTestId("btn-main"));
 
     expect(invoke).toHaveBeenCalledWith("skip_break");
   });
@@ -444,7 +450,7 @@ describe("settings window", () => {
     expect(screen.getByTestId("streak-days").textContent).toBe("3");
     expect(screen.getByTestId("focus-this-week").textContent).toBe("1h 20m");
     expect(screen.getByTestId("focus-this-month").textContent).toBe("5h 20m");
-    expect(screen.getByTestId("focus-this-year").textContent).toBe("25h 0m");
+    expect(screen.getByTestId("focus-this-year").textContent).toBe("25h");
     expect(invoke).toHaveBeenCalledWith("get_stats");
   });
 
@@ -686,7 +692,9 @@ describe("friction removal", () => {
     auto_start_next: false,
     overtime_seconds: 0
   };
+  const focusSnap: TimerSnapshot = { ...idleSnap, phase: "Focus", running: true, remaining_seconds: 60, focus_minutes: 25 };
   const pomodoro = { id: "p1", name: "Pomodoro", focusMinutes: 25, breakMinutes: 5, cycles: 1 };
+  const deep = { id: "p2", name: "Deep work", focusMinutes: 50, breakMinutes: 10, cycles: 1 };
 
   function mockBackend(overrides: Record<string, unknown> = {}): void {
     const responses: Record<string, unknown> = {
@@ -698,7 +706,7 @@ describe("friction removal", () => {
         focusMinutesThisYear: 0,
         currentStreakDays: 0
       },
-      list_presets: [pomodoro],
+      list_presets: [pomodoro, deep],
       get_quick_start_preset: pomodoro,
       get_app_settings: {
         autoStartNextFocusAfterBreak: false,
@@ -712,39 +720,84 @@ describe("friction removal", () => {
     invoke.mockImplementation((cmd: string) => Promise.resolve(responses[cmd]));
   }
 
-  function addStartButton(): void {
-    document.querySelector(".controls")!.insertAdjacentHTML(
-      "afterbegin",
-      `<button type="button" data-testid="btn-start" class="btn btn-primary" hidden><span class="btn-label">Start</span></button>`
-    );
-    document.querySelector("[data-testid='btn-stop']")!.innerHTML = `<span class="btn-label">Stop</span>`;
-  }
+  const mainLabel = (): string | undefined => screen.getByTestId("btn-main").textContent?.trim();
+  const stopHidden = (): boolean => (screen.getByTestId("btn-stop") as HTMLButtonElement).hidden;
 
-  it("shows a one-click Start with the quick-start preset when idle", async () => {
-    addStartButton();
+  it("idle: one Start for the last preset, chips for the others, no Stop", async () => {
     mockBackend();
     await bootstrap();
 
-    const start = screen.getByTestId("btn-start") as HTMLButtonElement;
-    expect(start.hidden).toBe(false);
-    expect(start.disabled).toBe(false);
-    expect(start.textContent).toBe("Start Pomodoro");
+    expect(mainLabel()).toBe("Start Pomodoro");
     expect(screen.getByTestId("timer-display").textContent).toBe("25:00");
     expect(screen.getByTestId("timer-phase").textContent).toBe("Ready · Pomodoro");
-    expect((screen.getByTestId("btn-pause") as HTMLButtonElement).hidden).toBe(true);
+    expect(stopHidden()).toBe(true);
 
-    await userEvent.click(start);
+    const chips = screen.getByTestId("preset-chips");
+    expect(chips.hidden).toBe(false);
+    const labels = Array.from(chips.querySelectorAll("button")).map((b) => b.textContent);
+    expect(labels).toEqual(["Deep work50/10", "+ New preset"]);
+
+    await userEvent.click(screen.getByTestId("btn-main"));
     expect(invoke).toHaveBeenCalledWith("quick_start");
   });
 
-  it("hides Start and shows session controls once a session runs", async () => {
-    addStartButton();
+  it("starts another preset from its chip in one click", async () => {
     mockBackend();
     await bootstrap();
-    applyTimerSnapshot({ ...idleSnap, phase: "Focus", running: true, remaining_seconds: 60, focus_minutes: 25 });
+    await userEvent.click(screen.getByRole("button", { name: /Deep work/ }));
+    expect(invoke).toHaveBeenCalledWith("start_preset", { id: "p2" });
+  });
 
-    expect((screen.getByTestId("btn-start") as HTMLButtonElement).hidden).toBe(true);
-    expect((screen.getByTestId("btn-pause") as HTMLButtonElement).hidden).toBe(false);
+  it("+ New preset opens the manage section", async () => {
+    mockBackend();
+    await bootstrap();
+    await userEvent.click(screen.getByRole("button", { name: "+ New preset" }));
+    expect((screen.getByTestId("presets-section") as HTMLDetailsElement).open).toBe(true);
+    expect(document.activeElement?.id).toBe("preset-name");
+  });
+
+  it("main button is the only action that changes per state", () => {
+    expect(mainActionFor(focusSnap, pomodoro)?.command).toBe("pause_timer");
+    expect(mainActionFor({ ...focusSnap, running: false }, pomodoro)?.command).toBe("resume_timer");
+    expect(mainActionFor({ ...focusSnap, phase: "Overtime" }, pomodoro)?.command).toBe("stop_timer");
+    expect(mainActionFor({ ...focusSnap, phase: "Break", cycles_remaining: 1 }, pomodoro)?.label).toBe("Start focus now");
+    expect(mainActionFor({ ...focusSnap, phase: "Break", auto_start_next: true, total_cycles: 1 }, pomodoro)?.label).toBe(
+      "Start focus now"
+    );
+    expect(mainActionFor({ ...focusSnap, phase: "Break", total_cycles: 1 }, pomodoro)?.label).toBe("End break");
+    expect(mainActionFor(idleSnap, null)).toBeNull();
+  });
+
+  it("Stop shows only where it differs from the main action", () => {
+    expect(showsStop(idleSnap)).toBe(false);
+    expect(showsStop(focusSnap)).toBe(true);
+    expect(showsStop({ ...focusSnap, running: false })).toBe(true);
+    expect(showsStop({ ...focusSnap, phase: "Overtime" })).toBe(false);
+    expect(showsStop({ ...focusSnap, phase: "Break", cycles_remaining: 1 })).toBe(true);
+    expect(showsStop({ ...focusSnap, phase: "Break", total_cycles: 1 })).toBe(false);
+  });
+
+  it("during focus: Pause plus Stop, chips hidden", async () => {
+    mockBackend();
+    await bootstrap();
+    applyTimerSnapshot(focusSnap);
+
+    expect(mainLabel()).toBe("Pause");
+    expect(stopHidden()).toBe(false);
+    expect(screen.getByTestId("preset-chips").hidden).toBe(true);
+
+    await userEvent.click(screen.getByTestId("btn-stop"));
+    expect(invoke).toHaveBeenCalledWith("stop_timer");
+  });
+
+  it("ignores a second main click right after the first", async () => {
+    mockBackend({ get_timer: focusSnap });
+    await bootstrap();
+    const main = screen.getByTestId("btn-main");
+    main.click();
+    main.click();
+    await Promise.resolve();
+    expect(invoke.mock.calls.filter(([cmd]) => cmd === "pause_timer")).toHaveLength(1);
   });
 
   it("requires a second click to reset history", async () => {
@@ -782,7 +835,7 @@ describe("friction removal", () => {
   it("requires a second click to delete a preset", async () => {
     mockBackend();
     await bootstrap();
-    const del = screen.getByRole("button", { name: "Delete preset" });
+    const del = screen.getAllByRole("button", { name: "Delete preset" })[0];
 
     await userEvent.click(del);
     expect(invoke).not.toHaveBeenCalledWith("delete_preset", { id: "p1" });
@@ -790,44 +843,8 @@ describe("friction removal", () => {
     expect(invoke).toHaveBeenCalledWith("delete_preset", { id: "p1" });
   });
 
-  it("starts a preset in one click when idle, but confirms when it would replace a session", async () => {
-    mockBackend();
-    await bootstrap();
-    const play = screen.getByRole("button", { name: "Start a focus session with this preset" });
-
-    await userEvent.click(play);
-    expect(invoke).toHaveBeenCalledWith("start_preset", { id: "p1" });
-
-    invoke.mockClear();
-    mockBackend();
-    applyTimerSnapshot({ ...idleSnap, phase: "Focus", running: true, remaining_seconds: 60, focus_minutes: 25 });
-    await userEvent.click(play);
-    expect(invoke).not.toHaveBeenCalledWith("start_preset", { id: "p1" });
-    await userEvent.click(play);
-    expect(invoke).toHaveBeenCalledWith("start_preset", { id: "p1" });
-  });
-
-  it("labels Stop as Finish focus during overtime", () => {
-    addStartButton();
-    applyTimerSnapshot({ ...idleSnap, phase: "Overtime", running: true, focus_minutes: 25, overtime_seconds: 30 });
-    const stop = screen.getByTestId("btn-stop");
-    expect(stop.textContent).toBe("Finish focus");
-    expect(stop.title).toContain("start the break");
-
-    applyTimerSnapshot({ ...idleSnap, phase: "Focus", running: true, remaining_seconds: 60, focus_minutes: 25 });
-    expect(stop.textContent).toBe("Stop");
-  });
-
   it("shows the current cycle for multi-cycle presets", () => {
-    applyTimerSnapshot({
-      ...idleSnap,
-      phase: "Focus",
-      running: true,
-      remaining_seconds: 60,
-      focus_minutes: 25,
-      total_cycles: 4,
-      cycles_remaining: 2
-    });
+    applyTimerSnapshot({ ...focusSnap, total_cycles: 4, cycles_remaining: 2 });
     expect(screen.getByTestId("timer-phase").textContent).toBe("Focus session · 2 of 4");
   });
 });

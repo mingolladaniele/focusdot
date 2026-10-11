@@ -31,102 +31,39 @@
           <div class="rail-fill" style="width: 0%"></div>
         </div>
         <div class="controls">
-          <button
-            type="button"
-            id="btn-start"
-            data-testid="btn-start"
-            class="btn btn-primary"
-            title="Start a focus session with your last used preset"
-            hidden
-          >
-            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M8 5.5v13l11-6.5z" fill="currentColor"/>
-            </svg>
+          <button type="button" id="btn-main" data-testid="btn-main" class="btn btn-primary btn-main">
+            <span class="btn-icon" aria-hidden="true"></span>
             <span class="btn-label">Start</span>
           </button>
-          <button
-            type="button"
-            id="btn-pause"
-            data-testid="btn-pause"
-            class="btn btn-ghost"
-            title="Suspend the countdown without losing remaining time"
-          >
-            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <line x1="9" y1="5" x2="9" y2="19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-              <line x1="15" y1="5" x2="15" y2="19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-            </svg>
-            Pause
-          </button>
-          <button
-            type="button"
-            id="btn-resume"
-            data-testid="btn-resume"
-            class="btn btn-primary"
-            title="Continue from where Pause left off"
-          >
-            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M8 5.5v13l11-6.5z" fill="currentColor"/>
-            </svg>
-            Resume
-          </button>
-          <button
-            type="button"
-            id="btn-skip-break"
-            data-testid="btn-skip-break"
-            class="btn btn-ghost"
-            title="Start the next focus now if your plan has another cycle left (works whether or not auto-start is on)"
-            disabled
-          >
-            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M8 5v14l11-7z" fill="currentColor"/>
-            </svg>
-            Start focus now
-          </button>
-          <button
-            type="button"
-            id="btn-stop"
-            data-testid="btn-stop"
-            class="btn btn-ghost"
-            title="Cancel the current session and go back to Idle"
-          >
-            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="6" y="6" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
-            </svg>
-            <span class="btn-label">Stop</span>
-          </button>
+          <button type="button" id="btn-stop" data-testid="btn-stop" class="btn-link btn-stop" hidden>Stop</button>
         </div>
+        <div class="preset-chips" data-testid="preset-chips"></div>
       </section>
 
       <!-- ============ STATS ============ -->
-      <section class="card stats-card" aria-labelledby="stats-title">
-        <div class="section-head">
-          <h2 id="stats-title">Statistics</h2>
-          <button type="button" id="reset-history" class="btn-link-danger" title="Delete all focus history">Reset</button>
+      <section class="card stats-card" aria-label="Statistics">
+        <div class="stats-today">
+          <div class="stats-today-main">
+            <span class="stats-today-value" data-testid="focus-today">0m</span>
+            <span class="stats-today-meta">today · <span data-testid="sessions-today">0</span> <span data-testid="sessions-word">sessions</span></span>
+          </div>
+          <div class="stats-streak" title="Consecutive days with at least one focus session">
+            <span class="stats-streak-value" data-testid="streak-days">—</span>
+            <span class="stats-streak-label">day streak</span>
+          </div>
         </div>
-        <div class="stats-grid">
-          <div class="stat-tile">
-            <span class="stat-value" data-testid="sessions-today">0</span>
-            <span class="stat-label">Sessions today</span>
+        <div class="stats-periods">
+          <div class="stats-period">
+            <span class="stats-period-value" data-testid="focus-this-week">0h 0m</span>
+            <span class="stats-period-label">Week</span>
           </div>
-          <div class="stat-tile">
-            <span class="stat-value" data-testid="focus-today">0m</span>
-            <span class="stat-label">Focus today</span>
+          <div class="stats-period">
+            <span class="stats-period-value" data-testid="focus-this-month">0h 0m</span>
+            <span class="stats-period-label">Month</span>
           </div>
-          <div class="stat-tile">
-            <span class="stat-value" data-testid="streak-days">—</span>
-            <span class="stat-label">Day streak</span>
-          </div>
-          <div class="stat-tile">
-            <span class="stat-value" data-testid="focus-this-week">0h 0m</span>
-            <span class="stat-label">This week</span>
-          </div>
-          <div class="stat-tile">
-            <span class="stat-value" data-testid="focus-this-month">0h 0m</span>
-            <span class="stat-label">This month</span>
-          </div>
-          <div class="stat-tile">
-            <span class="stat-value" data-testid="focus-this-year">0h 0m</span>
-            <span class="stat-label">This year</span>
+          <div class="stats-period">
+            <span class="stats-period-value" data-testid="focus-this-year">0h 0m</span>
+            <span class="stats-period-label">Year</span>
           </div>
         </div>
       </section>
@@ -184,6 +121,13 @@
                   <span class="switch-track"><span class="switch-thumb"></span></span>
                 </span>
               </label>
+              <div class="toggle toggle--action">
+                <span class="toggle-text">
+                  <span class="toggle-label">Focus history</span>
+                  <span class="toggle-hint">Delete every logged session. Statistics start from zero.</span>
+                </span>
+                <button type="button" id="reset-history" class="btn-link-danger" title="Delete all focus history">Reset</button>
+              </div>
             </div>
           </div>
         </details>
@@ -193,7 +137,7 @@
       <section class="card collapsible-card" aria-labelledby="presets-title">
         <details class="collapsible" data-testid="presets-section">
           <summary class="collapsible-trigger section-head">
-            <h2 id="presets-title">Presets</h2>
+            <h2 id="presets-title">Manage presets</h2>
             <span class="collapsible-chevron" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="6 9 12 15 18 9"></polyline>

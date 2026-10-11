@@ -5,6 +5,7 @@ import {
   statFocusTodayValue,
   statPeriodMinutesValue,
   statSessionsTodayValue,
+  statSessionsWord,
   statStreakValue
 } from "./stats";
 
@@ -60,6 +61,12 @@ const PHASE_LABEL: Record<TimerSnapshot["phase"], string> = {
   Break: "Break"
 };
 
+const ICON_PAUSE =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 5h3.5v14H7zm6.5 0H17v14h-3.5z"/></svg>';
+const ICON_SKIP =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 5v14l9-7zm10 0h3v14h-3z"/></svg>';
+const ICON_CHECK =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
 const ICON_PLAY =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>';
 const ICON_EDIT =
@@ -71,14 +78,12 @@ const CONFIRM_WINDOW_MS = 3000;
 
 /**
  * Guards a destructive click: the first click arms the button (red, new label) and only a
- * second click within a few seconds runs `action`. When `needsConfirm` returns false the
- * action runs straight away.
+ * second click within a few seconds runs `action`.
  */
 export function bindConfirmClick(
   btn: HTMLButtonElement,
   armed: { title: string; text?: string },
-  action: () => Promise<void> | void,
-  needsConfirm: () => boolean = () => true
+  action: () => Promise<void> | void
 ): void {
   const original = {
     title: btn.title,
@@ -97,7 +102,7 @@ export function bindConfirmClick(
   };
 
   btn.addEventListener("click", async () => {
-    if (disarmTimer !== undefined || !needsConfirm()) {
+    if (disarmTimer !== undefined) {
       disarm();
       await action();
       return;
@@ -112,8 +117,61 @@ export function bindConfirmClick(
 
 /** Preset behind the one-click Start (last used, else first); null when there are none. */
 let quickStartPreset: PresetRow | null = null;
-/** Latest phase from the backend, used to guard actions that would replace a running session. */
-let currentPhase: TimerSnapshot["phase"] = "Idle";
+let presetRows: PresetRow[] = [];
+/** Latest snapshot, so the main button knows what a click means right now. */
+let currentSnapshot: TimerSnapshot | undefined;
+
+export type MainAction = {
+  label: string;
+  title: string;
+  icon: string;
+  command: string;
+};
+
+/**
+ * The single primary action for the current state. Breaks cannot be paused and overtime has a
+ * single exit (finish and log), so the timer card never needs more than this plus Stop.
+ */
+export function mainActionFor(snapshot: TimerSnapshot, quick: PresetRow | null): MainAction | null {
+  switch (snapshot.phase) {
+    case "Idle":
+      if (!quick) return null;
+      return {
+        label: `Start ${quick.name}`,
+        title: `${quick.focusMinutes}m focus / ${quick.breakMinutes}m break`,
+        icon: ICON_PLAY,
+        command: "quick_start"
+      };
+    case "Focus":
+      return snapshot.running
+        ? { label: "Pause", title: "Pause and keep the remaining time", icon: ICON_PAUSE, command: "pause_timer" }
+        : { label: "Resume", title: "Continue the focus block", icon: ICON_PLAY, command: "resume_timer" };
+    case "Break":
+      return breakContinuesToFocus(snapshot)
+        ? { label: "Start focus now", title: "Skip the rest of the break", icon: ICON_SKIP, command: "skip_break" }
+        : { label: "End break", title: "End the break and the session", icon: ICON_CHECK, command: "skip_break" };
+    case "Overtime":
+      return {
+        label: "Finish focus",
+        title: "Log this focus (including overtime) and start the break",
+        icon: ICON_CHECK,
+        command: "stop_timer"
+      };
+  }
+}
+
+/** Mirrors `TimerSnapshot::break_continues_to_focus` in the backend. */
+function breakContinuesToFocus(snapshot: TimerSnapshot): boolean {
+  return snapshot.cycles_remaining > 0 || (snapshot.auto_start_next && snapshot.total_cycles === 1);
+}
+
+/** Stop is offered only where it differs from the main action. */
+export function showsStop(snapshot: TimerSnapshot): boolean {
+  return snapshot.phase === "Focus" || (snapshot.phase === "Break" && breakContinuesToFocus(snapshot));
+}
+
+/** Ignore a second click this soon after the first: the main button changes meaning under the cursor. */
+const MAIN_CLICK_GUARD_MS = 400;
 
 function presetIconButton(iconSvg: string, className: string, label: string): HTMLButtonElement {
   const btn = document.createElement("button");
@@ -153,12 +211,7 @@ export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
   const phaseEl = document.querySelector<HTMLElement>("[data-testid='timer-phase']");
   const timeEl = document.querySelector<HTMLElement>("[data-testid='timer-display']");
   const dot = document.querySelector<HTMLElement>("[data-testid='brand-dot']");
-  const pause = document.querySelector<HTMLButtonElement>("[data-testid='btn-pause']");
-  const resume = document.querySelector<HTMLButtonElement>("[data-testid='btn-resume']");
-  const skipBreak = document.querySelector<HTMLButtonElement>("[data-testid='btn-skip-break']");
-  const stop = document.querySelector<HTMLButtonElement>("[data-testid='btn-stop']");
-
-  currentPhase = snapshot.phase;
+  currentSnapshot = snapshot;
   const idle = snapshot.phase === "Idle";
 
   if (phaseEl) {
@@ -211,35 +264,21 @@ export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
     const pct = timerProgressPercent(snapshot);
     railFill.style.width = `${pct}%`;
   }
-  if (pause) pause.disabled = idle || !snapshot.running;
-  if (resume) resume.disabled = idle || snapshot.running;
-  if (skipBreak) skipBreak.disabled = snapshot.phase !== "Break";
-  if (stop) {
-    stop.disabled = idle;
-    const overtime = snapshot.phase === "Overtime";
-    const stopLabel = stop.querySelector<HTMLElement>(".btn-label");
-    if (stopLabel) stopLabel.textContent = overtime ? "Finish focus" : "Stop";
-    stop.title = overtime
-      ? "Log this focus (including overtime) and start the break"
-      : "Cancel the current session and go back to Idle";
-  }
 
-  // Idle shows a single Start; an active session shows the session controls.
-  const start = document.querySelector<HTMLButtonElement>("[data-testid='btn-start']");
-  if (start) {
-    start.hidden = !idle;
-    start.disabled = !quickStartPreset;
-    const startLabel = start.querySelector<HTMLElement>(".btn-label");
-    if (startLabel) {
-      startLabel.textContent = quickStartPreset ? `Start ${quickStartPreset.name}` : "Start";
-    }
-    start.title = quickStartPreset
-      ? `Start ${quickStartPreset.focusMinutes}m focus / ${quickStartPreset.breakMinutes}m break`
-      : "Create a preset first";
-    for (const b of [pause, resume, skipBreak, stop]) {
-      if (b) b.hidden = idle;
-    }
+  const main = document.querySelector<HTMLButtonElement>("[data-testid='btn-main']");
+  if (main) {
+    const action = mainActionFor(snapshot, quickStartPreset);
+    main.disabled = !action;
+    main.title = action?.title ?? "Create a preset first";
+    const label = main.querySelector<HTMLElement>(".btn-label");
+    if (label) label.textContent = action?.label ?? "Start";
+    const icon = main.querySelector<HTMLElement>(".btn-icon");
+    if (icon) icon.innerHTML = action?.icon ?? ICON_PLAY;
   }
+  const stop = document.querySelector<HTMLButtonElement>("[data-testid='btn-stop']");
+  if (stop) stop.hidden = !showsStop(snapshot);
+  const chips = document.querySelector<HTMLElement>("[data-testid='preset-chips']");
+  if (chips) chips.hidden = !idle;
 }
 
 function setPresetEditingMode(editing: boolean): void {
@@ -254,6 +293,7 @@ export async function bootstrap(): Promise<void> {
   await loadStats();
   await loadPresets();
   await loadQuickStart();
+  renderPresetChips();
   bindPresetForm();
   bindResetHistory();
   await bindAppSettings();
@@ -279,8 +319,9 @@ export async function bootstrap(): Promise<void> {
     const prev = lastPhase;
     lastPhase = payload.phase;
     if (prev === "Idle" && payload.phase !== "Idle") {
-      // Starting from the tray changes the last used preset.
+      // Starting from the tray or a chip changes the last used preset.
       await loadQuickStart();
+      renderPresetChips();
     }
     applyTimerSnapshot(payload);
     if (shouldRefreshStatsAfterTick(prev, payload)) {
@@ -298,6 +339,8 @@ async function loadStats(): Promise<void> {
   const focusToday = document.querySelector<HTMLElement>("[data-testid='focus-today']");
   const streak = document.querySelector<HTMLElement>("[data-testid='streak-days']");
   if (sessionsToday) sessionsToday.textContent = statSessionsTodayValue(stats.sessionsToday);
+  const sessionsWord = document.querySelector<HTMLElement>("[data-testid='sessions-word']");
+  if (sessionsWord) sessionsWord.textContent = statSessionsWord(stats.sessionsToday);
   if (focusThisWeek) focusThisWeek.textContent = statPeriodMinutesValue(stats.focusMinutesThisWeek);
   if (focusThisMonth) focusThisMonth.textContent = statPeriodMinutesValue(stats.focusMinutesThisMonth);
   if (focusThisYear) focusThisYear.textContent = statPeriodMinutesValue(stats.focusMinutesThisYear);
@@ -313,9 +356,45 @@ async function loadQuickStart(): Promise<void> {
   }
 }
 
+/** Idle chips start any preset other than the one behind the main button, in one click. */
+function renderPresetChips(): void {
+  const chips = document.querySelector<HTMLElement>("[data-testid='preset-chips']");
+  if (!chips) return;
+  chips.innerHTML = "";
+  for (const p of presetRows) {
+    if (p.id === quickStartPreset?.id) continue;
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.title = `Start ${p.name}: ${p.focusMinutes}m focus / ${p.breakMinutes}m break`;
+    chip.textContent = p.name;
+    const detail = document.createElement("small");
+    detail.textContent = `${p.focusMinutes}/${p.breakMinutes}`;
+    chip.appendChild(detail);
+    chip.addEventListener("click", async () => {
+      await invoke("start_preset", { id: p.id });
+    });
+    chips.appendChild(chip);
+  }
+  const add = document.createElement("button");
+  add.type = "button";
+  add.className = "chip chip--add";
+  add.textContent = "+ New preset";
+  add.addEventListener("click", openNewPresetForm);
+  chips.appendChild(add);
+}
+
+function openNewPresetForm(): void {
+  const section = document.querySelector<HTMLDetailsElement>("[data-testid='presets-section']");
+  if (section) section.open = true;
+  const name = document.querySelector<HTMLInputElement>("#preset-name");
+  name?.focus();
+}
+
 /** Re-render the Idle view after presets or the quick-start preset changed. */
 async function refreshQuickStartView(): Promise<void> {
   await loadQuickStart();
+  renderPresetChips();
   try {
     const snap = await invoke<TimerSnapshot>("get_timer");
     if (snap) applyTimerSnapshot(snap);
@@ -327,7 +406,8 @@ async function refreshQuickStartView(): Promise<void> {
 async function loadPresets(): Promise<void> {
   const list = document.querySelector<HTMLUListElement>("#preset-list");
   if (!list) return;
-  const presets = await invoke<PresetRow[]>("list_presets");
+  const presets = (await invoke<PresetRow[]>("list_presets")) ?? [];
+  presetRows = presets;
   list.innerHTML = "";
   for (const p of presets) {
     const li = document.createElement("li");
@@ -362,21 +442,6 @@ async function loadPresets(): Promise<void> {
       nameIn?.focus();
     });
     actions.appendChild(edit);
-
-    const start = presetIconButton(
-      ICON_PLAY,
-      "preset-icon-btn preset-icon-btn--start",
-      "Start a focus session with this preset"
-    );
-    bindConfirmClick(
-      start,
-      { title: "Click again to replace the current session" },
-      async () => {
-        await invoke("start_preset", { id: p.id });
-      },
-      () => currentPhase !== "Idle"
-    );
-    actions.appendChild(start);
     const del = presetIconButton(ICON_DELETE, "preset-icon-btn preset-icon-btn--delete", "Delete preset");
     bindConfirmClick(del, { title: `Click again to delete "${p.name}"` }, async () => {
       await invoke("delete_preset", { id: p.id });
@@ -485,22 +550,15 @@ async function bindAutostart(): Promise<void> {
 }
 
 function bindTimerControls(): void {
-  const pause = document.querySelector<HTMLButtonElement>("[data-testid='btn-pause']");
-  const resume = document.querySelector<HTMLButtonElement>("[data-testid='btn-resume']");
-  const skipBreak = document.querySelector<HTMLButtonElement>("[data-testid='btn-skip-break']");
+  const main = document.querySelector<HTMLButtonElement>("[data-testid='btn-main']");
   const stop = document.querySelector<HTMLButtonElement>("[data-testid='btn-stop']");
-  const start = document.querySelector<HTMLButtonElement>("[data-testid='btn-start']");
-  start?.addEventListener("click", async () => {
-    await invoke("quick_start");
-  });
-  pause?.addEventListener("click", async () => {
-    await invoke("pause_timer");
-  });
-  resume?.addEventListener("click", async () => {
-    await invoke("resume_timer");
-  });
-  skipBreak?.addEventListener("click", async () => {
-    await invoke("skip_break");
+  let lastMainClick = -Infinity;
+  main?.addEventListener("click", async () => {
+    const now = Date.now();
+    if (now - lastMainClick < MAIN_CLICK_GUARD_MS) return;
+    lastMainClick = now;
+    const action = currentSnapshot && mainActionFor(currentSnapshot, quickStartPreset);
+    if (action) await invoke(action.command);
   });
   stop?.addEventListener("click", async () => {
     await invoke("stop_timer");
