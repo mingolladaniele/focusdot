@@ -143,7 +143,11 @@ pub fn build_root_menu<R: Runtime>(
         items.push(Box::new(MenuItem::with_id(handle, id, label, true, None::<&str>)?));
     }
 
-    let settings = MenuItem::with_id(handle, "settings", "Settings & dashboard", true, None::<&str>)?;
+    let sep = PredefinedMenuItem::separator(handle)?;
+    items.push(Box::new(sep));
+    let open = MenuItem::with_id(handle, "dashboard", "Open focusdot", true, None::<&str>)?;
+    items.push(Box::new(open));
+    let settings = MenuItem::with_id(handle, "settings", "Settings", true, None::<&str>)?;
     items.push(Box::new(settings));
 
     let sep = PredefinedMenuItem::separator(handle)?;
@@ -164,11 +168,8 @@ pub fn handle_menu_event<R: Runtime>(
     let id = event.id().as_ref();
     match id {
         "exit" => app.exit(0),
-        "settings" => {
-            if let Some(window) = app.get_webview_window("main") {
-                show_main_window_bottom_right(&window);
-            }
-        }
+        "dashboard" => show_view(app, "dashboard"),
+        "settings" => show_view(app, "settings"),
         "pause" => {
             if let Ok(mut c) = state.inner.lock() {
                 if let Ok(t) = c.timer.clone().pause() {
@@ -257,6 +258,14 @@ pub fn handle_menu_event<R: Runtime>(
     }
 }
 
+/// Shows the dashboard window on `view` ("dashboard" or "settings"; see `showView` in main.ts).
+fn show_view<R: Runtime>(app: &AppHandle<R>, view: &str) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.emit("show-view", view);
+        show_main_window_bottom_right(&window);
+    }
+}
+
 fn start_and_notify<R: Runtime>(
     app: &AppHandle<R>,
     state: &Arc<AppState>,
@@ -300,9 +309,7 @@ pub fn install_tray<R: Runtime>(app: &mut tauri::App<R>, state: Arc<AppState>) -
                 ..
             } = event
             {
-                if let Some(w) = tray.app_handle().get_webview_window("main") {
-                    show_main_window_bottom_right(&w);
-                }
+                show_view(tray.app_handle(), "dashboard");
             }
         })
         .on_menu_event(move |app, event| {
