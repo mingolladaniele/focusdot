@@ -33,6 +33,19 @@
         <div class="controls">
           <button
             type="button"
+            id="btn-start"
+            data-testid="btn-start"
+            class="btn btn-primary"
+            title="Start a focus session with your last used preset"
+            hidden
+          >
+            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 5.5v13l11-6.5z" fill="currentColor"/>
+            </svg>
+            <span class="btn-label">Start</span>
+          </button>
+          <button
+            type="button"
             id="btn-pause"
             data-testid="btn-pause"
             class="btn btn-ghost"
@@ -79,7 +92,7 @@
             <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
               <rect x="6" y="6" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
             </svg>
-            Stop
+            <span class="btn-label">Stop</span>
           </button>
         </div>
       </section>
@@ -88,7 +101,7 @@
       <section class="card stats-card" aria-labelledby="stats-title">
         <div class="section-head">
           <h2 id="stats-title">Statistics</h2>
-          <button type="button" id="reset-history" class="btn-link-danger">Reset</button>
+          <button type="button" id="reset-history" class="btn-link-danger" title="Delete all focus history">Reset</button>
         </div>
         <div class="stats-grid">
           <div class="stat-tile">
@@ -144,7 +157,7 @@
               <label class="toggle">
                 <span class="toggle-text">
                   <span class="toggle-label">Overtime tracking</span>
-                  <span class="toggle-hint">When a focus block ends, keep counting extra time until you press Stop. The full session is logged then and break starts.</span>
+                  <span class="toggle-hint">When a focus block ends, keep counting extra time until you press Finish focus. The full session is logged then and break starts.</span>
                 </span>
                 <span class="switch">
                   <input type="checkbox" id="overtime-tracking" />
@@ -199,11 +212,11 @@
               </label>
               <label class="field" for="focus-minutes">
                 <span>Focus minutes</span>
-                <input id="focus-minutes" name="focusMinutes" type="number" min="1" placeholder="25" required />
+                <input id="focus-minutes" name="focusMinutes" type="number" min="1" value="25" required />
               </label>
               <label class="field" for="break-minutes">
                 <span>Break minutes</span>
-                <input id="break-minutes" name="breakMinutes" type="number" min="1" placeholder="5" required />
+                <input id="break-minutes" name="breakMinutes" type="number" min="1" value="5" required />
               </label>
               <label class="field" for="cycles">
                 <span>Cycles</span>

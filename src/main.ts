@@ -38,6 +38,7 @@ export type TimerSnapshot = {
   focus_minutes: number;
   break_minutes: number;
   cycles_remaining: number;
+  total_cycles?: number;
   auto_start_next: boolean;
   overtime_seconds: number;
 };
@@ -65,6 +66,54 @@ const ICON_EDIT =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
 const ICON_DELETE =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-9h1.64l.41 6h-2.46l.41-6zm4.54 0h1.64l.41 6h-2.46l.41-6zM15.5 4l-1-1h-5l-1 1H5v2h14V4h-3.5z"/></svg>';
+
+const CONFIRM_WINDOW_MS = 3000;
+
+/**
+ * Guards a destructive click: the first click arms the button (red, new label) and only a
+ * second click within a few seconds runs `action`. When `needsConfirm` returns false the
+ * action runs straight away.
+ */
+export function bindConfirmClick(
+  btn: HTMLButtonElement,
+  armed: { title: string; text?: string },
+  action: () => Promise<void> | void,
+  needsConfirm: () => boolean = () => true
+): void {
+  const original = {
+    title: btn.title,
+    ariaLabel: btn.getAttribute("aria-label"),
+    text: btn.textContent
+  };
+  let disarmTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const disarm = (): void => {
+    clearTimeout(disarmTimer);
+    disarmTimer = undefined;
+    btn.classList.remove("is-armed");
+    btn.title = original.title;
+    if (original.ariaLabel !== null) btn.setAttribute("aria-label", original.ariaLabel);
+    if (armed.text !== undefined) btn.textContent = original.text;
+  };
+
+  btn.addEventListener("click", async () => {
+    if (disarmTimer !== undefined || !needsConfirm()) {
+      disarm();
+      await action();
+      return;
+    }
+    btn.classList.add("is-armed");
+    btn.title = armed.title;
+    if (original.ariaLabel !== null) btn.setAttribute("aria-label", armed.title);
+    if (armed.text !== undefined) btn.textContent = armed.text;
+    disarmTimer = setTimeout(disarm, CONFIRM_WINDOW_MS);
+  });
+}
+
+/** Preset behind the one-click Start (last used, else first); null when there are none. */
+let quickStartPreset: PresetRow | null = null;
+/** Latest phase from the backend, used to guard actions that would replace a running session. */
+let currentPhase: TimerSnapshot["phase"] = "Idle";
 
 function presetIconButton(iconSvg: string, className: string, label: string): HTMLButtonElement {
   const btn = document.createElement("button");
@@ -109,16 +158,26 @@ export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
   const skipBreak = document.querySelector<HTMLButtonElement>("[data-testid='btn-skip-break']");
   const stop = document.querySelector<HTMLButtonElement>("[data-testid='btn-stop']");
 
+  currentPhase = snapshot.phase;
+  const idle = snapshot.phase === "Idle";
+
   if (phaseEl) {
     let label = PHASE_LABEL[snapshot.phase];
-    if (snapshot.phase !== "Idle" && !snapshot.running) {
+    if (idle && quickStartPreset) {
+      label = `Ready · ${quickStartPreset.name}`;
+    }
+    const totalCycles = snapshot.total_cycles ?? 0;
+    if (!idle && totalCycles > 1) {
+      label = `${label} · ${totalCycles - snapshot.cycles_remaining} of ${totalCycles}`;
+    }
+    if (!idle && !snapshot.running) {
       label = `${label} (paused)`;
     }
     phaseEl.textContent = label;
   }
   if (timeEl) {
-    if (snapshot.phase === "Idle") {
-      timeEl.textContent = "--:--";
+    if (idle) {
+      timeEl.textContent = quickStartPreset ? formatMmSs(quickStartPreset.focusMinutes * 60) : "--:--";
     } else if (snapshot.phase === "Overtime") {
       timeEl.textContent = formatOvertimeDisplay(snapshot.overtime_seconds);
     } else {
@@ -152,10 +211,35 @@ export function applyTimerSnapshot(snapshot: TimerSnapshot): void {
     const pct = timerProgressPercent(snapshot);
     railFill.style.width = `${pct}%`;
   }
-  if (pause) pause.disabled = snapshot.phase === "Idle" || !snapshot.running;
-  if (resume) resume.disabled = snapshot.phase === "Idle" || snapshot.running;
+  if (pause) pause.disabled = idle || !snapshot.running;
+  if (resume) resume.disabled = idle || snapshot.running;
   if (skipBreak) skipBreak.disabled = snapshot.phase !== "Break";
-  if (stop) stop.disabled = snapshot.phase === "Idle";
+  if (stop) {
+    stop.disabled = idle;
+    const overtime = snapshot.phase === "Overtime";
+    const stopLabel = stop.querySelector<HTMLElement>(".btn-label");
+    if (stopLabel) stopLabel.textContent = overtime ? "Finish focus" : "Stop";
+    stop.title = overtime
+      ? "Log this focus (including overtime) and start the break"
+      : "Cancel the current session and go back to Idle";
+  }
+
+  // Idle shows a single Start; an active session shows the session controls.
+  const start = document.querySelector<HTMLButtonElement>("[data-testid='btn-start']");
+  if (start) {
+    start.hidden = !idle;
+    start.disabled = !quickStartPreset;
+    const startLabel = start.querySelector<HTMLElement>(".btn-label");
+    if (startLabel) {
+      startLabel.textContent = quickStartPreset ? `Start ${quickStartPreset.name}` : "Start";
+    }
+    start.title = quickStartPreset
+      ? `Start ${quickStartPreset.focusMinutes}m focus / ${quickStartPreset.breakMinutes}m break`
+      : "Create a preset first";
+    for (const b of [pause, resume, skipBreak, stop]) {
+      if (b) b.hidden = idle;
+    }
+  }
 }
 
 function setPresetEditingMode(editing: boolean): void {
@@ -169,11 +253,16 @@ export async function bootstrap(): Promise<void> {
   document.body.dataset.ready = "true";
   await loadStats();
   await loadPresets();
+  await loadQuickStart();
   bindPresetForm();
   bindResetHistory();
   await bindAppSettings();
   await bindAutostart();
   bindTimerControls();
+  // Stats are day-based; reopening the dashboard tomorrow must not show yesterday's numbers.
+  window.addEventListener("focus", () => {
+    void loadStats();
+  });
 
   let lastPhase: TimerSnapshot["phase"] | undefined;
   try {
@@ -189,6 +278,10 @@ export async function bootstrap(): Promise<void> {
     if (!payload) return;
     const prev = lastPhase;
     lastPhase = payload.phase;
+    if (prev === "Idle" && payload.phase !== "Idle") {
+      // Starting from the tray changes the last used preset.
+      await loadQuickStart();
+    }
     applyTimerSnapshot(payload);
     if (shouldRefreshStatsAfterTick(prev, payload)) {
       await loadStats();
@@ -210,6 +303,25 @@ async function loadStats(): Promise<void> {
   if (focusThisYear) focusThisYear.textContent = statPeriodMinutesValue(stats.focusMinutesThisYear);
   if (focusToday) focusToday.textContent = statFocusTodayValue(stats.focusMinutesToday);
   if (streak) streak.textContent = statStreakValue(stats.currentStreakDays);
+}
+
+async function loadQuickStart(): Promise<void> {
+  try {
+    quickStartPreset = (await invoke<PresetRow | null>("get_quick_start_preset")) ?? null;
+  } catch {
+    quickStartPreset = null;
+  }
+}
+
+/** Re-render the Idle view after presets or the quick-start preset changed. */
+async function refreshQuickStartView(): Promise<void> {
+  await loadQuickStart();
+  try {
+    const snap = await invoke<TimerSnapshot>("get_timer");
+    if (snap) applyTimerSnapshot(snap);
+  } catch {
+    // Timer view stays as is; the next timer-tick corrects it.
+  }
 }
 
 async function loadPresets(): Promise<void> {
@@ -256,14 +368,20 @@ async function loadPresets(): Promise<void> {
       "preset-icon-btn preset-icon-btn--start",
       "Start a focus session with this preset"
     );
-    start.addEventListener("click", async () => {
-      await invoke("start_preset", { id: p.id });
-    });
+    bindConfirmClick(
+      start,
+      { title: "Click again to replace the current session" },
+      async () => {
+        await invoke("start_preset", { id: p.id });
+      },
+      () => currentPhase !== "Idle"
+    );
     actions.appendChild(start);
     const del = presetIconButton(ICON_DELETE, "preset-icon-btn preset-icon-btn--delete", "Delete preset");
-    del.addEventListener("click", async () => {
+    bindConfirmClick(del, { title: `Click again to delete "${p.name}"` }, async () => {
       await invoke("delete_preset", { id: p.id });
       await loadPresets();
+      await refreshQuickStartView();
     });
     actions.appendChild(del);
     li.appendChild(actions);
@@ -308,16 +426,21 @@ function bindPresetForm(): void {
     setPresetEditingMode(false);
     if (error) error.textContent = "";
     await loadPresets();
+    await refreshQuickStartView();
   });
 }
 
 function bindResetHistory(): void {
   const btn = document.querySelector<HTMLButtonElement>("#reset-history");
   if (!btn) return;
-  btn.addEventListener("click", async () => {
-    await invoke("reset_history");
-    await loadStats();
-  });
+  bindConfirmClick(
+    btn,
+    { title: "Click again to delete all focus history", text: "Delete all history?" },
+    async () => {
+      await invoke("reset_history");
+      await loadStats();
+    }
+  );
 }
 
 async function bindAppSettings(): Promise<void> {
@@ -366,6 +489,10 @@ function bindTimerControls(): void {
   const resume = document.querySelector<HTMLButtonElement>("[data-testid='btn-resume']");
   const skipBreak = document.querySelector<HTMLButtonElement>("[data-testid='btn-skip-break']");
   const stop = document.querySelector<HTMLButtonElement>("[data-testid='btn-stop']");
+  const start = document.querySelector<HTMLButtonElement>("[data-testid='btn-start']");
+  start?.addEventListener("click", async () => {
+    await invoke("quick_start");
+  });
   pause?.addEventListener("click", async () => {
     await invoke("pause_timer");
   });

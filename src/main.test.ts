@@ -673,3 +673,161 @@ describe("settings window", () => {
     expect(invoke).toHaveBeenCalledWith("set_notifications_enabled", { enabled: false });
   });
 });
+
+describe("friction removal", () => {
+  const idleSnap: TimerSnapshot = {
+    phase: "Idle",
+    running: false,
+    remaining_seconds: 0,
+    focus_minutes: 0,
+    break_minutes: 0,
+    cycles_remaining: 0,
+    total_cycles: 0,
+    auto_start_next: false,
+    overtime_seconds: 0
+  };
+  const pomodoro = { id: "p1", name: "Pomodoro", focusMinutes: 25, breakMinutes: 5, cycles: 1 };
+
+  function mockBackend(overrides: Record<string, unknown> = {}): void {
+    const responses: Record<string, unknown> = {
+      get_stats: {
+        sessionsToday: 0,
+        focusMinutesToday: 0,
+        focusMinutesThisWeek: 0,
+        focusMinutesThisMonth: 0,
+        focusMinutesThisYear: 0,
+        currentStreakDays: 0
+      },
+      list_presets: [pomodoro],
+      get_quick_start_preset: pomodoro,
+      get_app_settings: {
+        autoStartNextFocusAfterBreak: false,
+        notificationsEnabled: true,
+        overtimeTrackingEnabled: false
+      },
+      is_autostart_enabled: false,
+      get_timer: idleSnap,
+      ...overrides
+    };
+    invoke.mockImplementation((cmd: string) => Promise.resolve(responses[cmd]));
+  }
+
+  function addStartButton(): void {
+    document.querySelector(".controls")!.insertAdjacentHTML(
+      "afterbegin",
+      `<button type="button" data-testid="btn-start" class="btn btn-primary" hidden><span class="btn-label">Start</span></button>`
+    );
+    document.querySelector("[data-testid='btn-stop']")!.innerHTML = `<span class="btn-label">Stop</span>`;
+  }
+
+  it("shows a one-click Start with the quick-start preset when idle", async () => {
+    addStartButton();
+    mockBackend();
+    await bootstrap();
+
+    const start = screen.getByTestId("btn-start") as HTMLButtonElement;
+    expect(start.hidden).toBe(false);
+    expect(start.disabled).toBe(false);
+    expect(start.textContent).toBe("Start Pomodoro");
+    expect(screen.getByTestId("timer-display").textContent).toBe("25:00");
+    expect(screen.getByTestId("timer-phase").textContent).toBe("Ready · Pomodoro");
+    expect((screen.getByTestId("btn-pause") as HTMLButtonElement).hidden).toBe(true);
+
+    await userEvent.click(start);
+    expect(invoke).toHaveBeenCalledWith("quick_start");
+  });
+
+  it("hides Start and shows session controls once a session runs", async () => {
+    addStartButton();
+    mockBackend();
+    await bootstrap();
+    applyTimerSnapshot({ ...idleSnap, phase: "Focus", running: true, remaining_seconds: 60, focus_minutes: 25 });
+
+    expect((screen.getByTestId("btn-start") as HTMLButtonElement).hidden).toBe(true);
+    expect((screen.getByTestId("btn-pause") as HTMLButtonElement).hidden).toBe(false);
+  });
+
+  it("requires a second click to reset history", async () => {
+    mockBackend();
+    await bootstrap();
+    const reset = document.querySelector<HTMLButtonElement>("#reset-history")!;
+
+    await userEvent.click(reset);
+    expect(invoke).not.toHaveBeenCalledWith("reset_history");
+    expect(reset.classList.contains("is-armed")).toBe(true);
+    expect(reset.textContent).toBe("Delete all history?");
+
+    await userEvent.click(reset);
+    expect(invoke).toHaveBeenCalledWith("reset_history");
+    expect(reset.textContent).toBe("Reset");
+  });
+
+  it("disarms a confirm button after a few seconds", async () => {
+    vi.useFakeTimers();
+    try {
+      mockBackend();
+      await bootstrap();
+      const reset = document.querySelector<HTMLButtonElement>("#reset-history")!;
+      reset.click();
+      expect(reset.classList.contains("is-armed")).toBe(true);
+      vi.advanceTimersByTime(3500);
+      expect(reset.classList.contains("is-armed")).toBe(false);
+      reset.click();
+      expect(invoke).not.toHaveBeenCalledWith("reset_history");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("requires a second click to delete a preset", async () => {
+    mockBackend();
+    await bootstrap();
+    const del = screen.getByRole("button", { name: "Delete preset" });
+
+    await userEvent.click(del);
+    expect(invoke).not.toHaveBeenCalledWith("delete_preset", { id: "p1" });
+    await userEvent.click(del);
+    expect(invoke).toHaveBeenCalledWith("delete_preset", { id: "p1" });
+  });
+
+  it("starts a preset in one click when idle, but confirms when it would replace a session", async () => {
+    mockBackend();
+    await bootstrap();
+    const play = screen.getByRole("button", { name: "Start a focus session with this preset" });
+
+    await userEvent.click(play);
+    expect(invoke).toHaveBeenCalledWith("start_preset", { id: "p1" });
+
+    invoke.mockClear();
+    mockBackend();
+    applyTimerSnapshot({ ...idleSnap, phase: "Focus", running: true, remaining_seconds: 60, focus_minutes: 25 });
+    await userEvent.click(play);
+    expect(invoke).not.toHaveBeenCalledWith("start_preset", { id: "p1" });
+    await userEvent.click(play);
+    expect(invoke).toHaveBeenCalledWith("start_preset", { id: "p1" });
+  });
+
+  it("labels Stop as Finish focus during overtime", () => {
+    addStartButton();
+    applyTimerSnapshot({ ...idleSnap, phase: "Overtime", running: true, focus_minutes: 25, overtime_seconds: 30 });
+    const stop = screen.getByTestId("btn-stop");
+    expect(stop.textContent).toBe("Finish focus");
+    expect(stop.title).toContain("start the break");
+
+    applyTimerSnapshot({ ...idleSnap, phase: "Focus", running: true, remaining_seconds: 60, focus_minutes: 25 });
+    expect(stop.textContent).toBe("Stop");
+  });
+
+  it("shows the current cycle for multi-cycle presets", () => {
+    applyTimerSnapshot({
+      ...idleSnap,
+      phase: "Focus",
+      running: true,
+      remaining_seconds: 60,
+      focus_minutes: 25,
+      total_cycles: 4,
+      cycles_remaining: 2
+    });
+    expect(screen.getByTestId("timer-phase").textContent).toBe("Focus session · 2 of 4");
+  });
+});
